@@ -1,0 +1,21 @@
+{
+  "name": "Lucky Planet - 로또 번호 추출기",
+  "short_name": "Lucky Planet",
+  "description": "스마트한 로또 번호 생성 및 당첨 확인 앱",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#E0F2F1",
+  "theme_color": "#E0F2F1",
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}

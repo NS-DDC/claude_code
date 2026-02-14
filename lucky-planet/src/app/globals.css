@@ -1,0 +1,85 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --color-mint: #E0F2F1;
+  --color-gold: #FFD700;
+}
+
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  background: linear-gradient(160deg, #E0F2F1 0%, #f0faf8 30%, #fff9e6 70%, #fffdf5 100%);
+  min-height: 100dvh;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* 다크모드 */
+.dark body {
+  background: linear-gradient(160deg, #0f172a 0%, #1e293b 50%, #0f172a 100%);
+  color: #e2e8f0;
+}
+
+/* 글래스모피즘 카드 */
+@layer components {
+  .glass-card {
+    @apply bg-white/40 backdrop-blur-xl rounded-3xl border border-white/30 shadow-lg;
+  }
+
+  .glass-card-solid {
+    @apply bg-white/70 backdrop-blur-xl rounded-3xl border border-white/30 shadow-lg;
+  }
+}
+
+.dark .glass-card {
+  @apply bg-gray-800/40 border-gray-700;
+}
+
+.dark .glass-card-solid {
+  @apply bg-gray-800/70 border-gray-700;
+}
+
+/* QR 리더 커스텀 스타일 */
+#qr-reader {
+  border: none !important;
+}
+
+#qr-reader video {
+  border-radius: 1rem;
+  object-fit: cover;
+}
+
+#qr-reader__scan_region {
+  min-height: 100% !important;
+}
+
+#qr-reader__header_message,
+#qr-reader__status_span,
+#qr-reader__dashboard_section,
+#qr-reader__dashboard_section_swaplink {
+  display: none !important;
+}
+
+/* 스크롤바 숨기기 (모바일 느낌) */
+::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+}
+
+/* 안전 영역 대응 (노치 디바이스) */
+@supports (padding: max(0px)) {
+  .safe-area-top {
+    padding-top: max(1rem, env(safe-area-inset-top));
+  }
+  .safe-area-bottom {
+    padding-bottom: max(5rem, calc(4.5rem + env(safe-area-inset-bottom)));
+  }
+}
