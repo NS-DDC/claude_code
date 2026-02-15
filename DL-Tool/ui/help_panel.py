@@ -22,8 +22,10 @@ class HelpPanel(QWidget):
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
         scroll.setFrameShape(QFrame.Shape.NoFrame)
+        scroll.setStyleSheet("QScrollArea { background-color: #1e1e1e; }")
 
         content = QWidget()
+        content.setStyleSheet("QWidget { background-color: #1e1e1e; }")
         content_layout = QVBoxLayout(content)
         content_layout.setContentsMargins(12, 12, 12, 12)
         content_layout.setSpacing(10)
@@ -133,13 +135,13 @@ class HelpPanel(QWidget):
             html = (
                 f'<span style="color:#ffd966; font-family:monospace; font-size:12px; font-weight:bold;">'
                 f'{key}</span><br>'
-                f'<span style="color:#e0e0e0; font-size:11px;">{desc}</span>'
+                f'<span style="color:#ffffff; font-size:11px;">{desc}</span>'
             )
         else:
-            html = f'<span style="color:#e8e8e8; font-size:12px;">{text}</span>'
+            html = f'<span style="color:#ffffff; font-size:12px;">{text}</span>'
         label = QLabel(html)
         label.setTextFormat(Qt.TextFormat.RichText)
-        label.setStyleSheet("padding: 3px 6px;")
+        label.setStyleSheet("padding: 3px 6px; background-color: #1e1e1e;")
         label.setWordWrap(True)
         return label
 
@@ -147,14 +149,14 @@ class HelpPanel(QWidget):
     def _desc_label(text: str) -> QLabel:
         label = QLabel(text)
         label.setWordWrap(True)
-        label.setStyleSheet("color: #e8e8e8; padding: 3px 6px; font-size: 12px;")
+        label.setStyleSheet("color: #ffffff; padding: 3px 6px; font-size: 12px; background-color: #1e1e1e;")
         return label
 
     @staticmethod
     def _tip_label(text: str) -> QLabel:
         label = QLabel(f"• {text}")
         label.setWordWrap(True)
-        label.setStyleSheet("color: #d0d0d0; padding: 3px 6px; font-size: 12px;")
+        label.setStyleSheet("color: #f0f0f0; padding: 3px 6px; font-size: 12px; background-color: #1e1e1e;")
         return label
 
     @staticmethod
