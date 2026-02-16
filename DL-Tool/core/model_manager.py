@@ -128,22 +128,35 @@ class ModelManager(QObject):
             elif self._model_type == "KERAS":
                 import cv2
                 import numpy as np
-                import tensorflow as tf
 
-                # Load and preprocess image
+                # Load image
                 img = cv2.imread(image_path)
                 if img is None:
                     return None
 
-                # Resize to model input size (assuming 224x224, adjust as needed)
-                input_shape = self._model.input_shape[1:3]
-                img_resized = cv2.resize(img, input_shape)
+                orig_h, orig_w = img.shape[:2]
+
+                # Get model input shape
+                input_shape = self._model.input_shape
+                if input_shape and len(input_shape) >= 3:
+                    target_h, target_w = input_shape[1], input_shape[2]
+                else:
+                    target_h, target_w = 224, 224
+
+                img_resized = cv2.resize(img, (target_w, target_h))
                 img_array = np.expand_dims(img_resized, axis=0)
                 img_array = img_array / 255.0  # Normalize
 
                 # Predict
                 predictions = self._model.predict(img_array, verbose=0)
-                return predictions
+
+                # Return dict with predictions and metadata for auto_labeler
+                return {
+                    "predictions": predictions,
+                    "orig_shape": (orig_h, orig_w),
+                    "input_shape": (target_h, target_w),
+                    "model_type": "KERAS",
+                }
             else:
                 return None
         except Exception as exc:

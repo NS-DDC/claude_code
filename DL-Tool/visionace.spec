@@ -17,6 +17,8 @@ a = Analysis(
         'cv2',
         'numpy',
         'PIL',
+        'tensorflow',
+        'tensorflow.keras',
     ],
     hookspath=[],
     hooksconfig={},

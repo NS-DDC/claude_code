@@ -154,6 +154,10 @@ class AutoLabelWorker(QThread):
         if results is None:
             return []
 
+        # Handle Keras model results (dict with 'model_type' key)
+        if isinstance(results, dict) and results.get("model_type") == "KERAS":
+            return self._process_keras_results(results, class_names)
+
         labels: list[LabelItem] = []
 
         for result in results:
@@ -204,6 +208,90 @@ class AutoLabelWorker(QThread):
                         class_name=cls_name,
                         label_type="polygon",
                         points=polygon_pts,
+                        color=_color_for_class(cls_id),
+                    )
+                    labels.append(label)
+
+        return labels
+
+    def _process_keras_results(
+        self,
+        results: dict,
+        class_names: dict[int, str],
+    ) -> list[LabelItem]:
+        """Process Keras model predictions into LabelItem list.
+
+        Handles two output formats:
+        - Segmentation: output shape (1, H, W, C) or (1, H, W) -> per-pixel masks
+        - Classification: output shape (1, N) -> whole-image class labels
+        """
+        predictions = results["predictions"]
+        orig_h, orig_w = results["orig_shape"]
+
+        labels: list[LabelItem] = []
+        pred = predictions[0] if len(predictions.shape) > 1 else predictions
+
+        # Segmentation output: (H, W, C) or (H, W)
+        if len(pred.shape) >= 2 and pred.shape[0] > 1 and pred.shape[1] > 1:
+            if len(pred.shape) == 3:
+                # Multi-class segmentation: (H, W, C)
+                num_classes = pred.shape[2]
+                for cls_id in range(num_classes):
+                    channel = pred[:, :, cls_id]
+                    # Apply confidence threshold
+                    binary_mask = (channel > self._confidence).astype(np.uint8) * 255
+
+                    if binary_mask.max() == 0:
+                        continue
+
+                    # Resize mask to original image size
+                    mask_resized = cv2.resize(
+                        binary_mask, (orig_w, orig_h),
+                        interpolation=cv2.INTER_NEAREST
+                    )
+
+                    cls_name = class_names.get(cls_id, f"class_{cls_id}")
+                    label = LabelItem(
+                        class_id=cls_id,
+                        class_name=cls_name,
+                        label_type="mask",
+                        points=[],
+                        color=_color_for_class(cls_id),
+                        mask_data=mask_resized,
+                    )
+                    labels.append(label)
+
+            elif len(pred.shape) == 2:
+                # Single-channel segmentation: (H, W)
+                binary_mask = (pred > self._confidence).astype(np.uint8) * 255
+                if binary_mask.max() > 0:
+                    mask_resized = cv2.resize(
+                        binary_mask, (orig_w, orig_h),
+                        interpolation=cv2.INTER_NEAREST
+                    )
+                    cls_name = class_names.get(0, "class_0")
+                    label = LabelItem(
+                        class_id=0,
+                        class_name=cls_name,
+                        label_type="mask",
+                        points=[],
+                        color=_color_for_class(0),
+                        mask_data=mask_resized,
+                    )
+                    labels.append(label)
+
+        # Classification output: (N,) - flat class probabilities
+        elif len(pred.shape) == 1:
+            for cls_id in range(len(pred)):
+                if pred[cls_id] > self._confidence:
+                    cls_name = class_names.get(cls_id, f"class_{cls_id}")
+                    # For classification, create a full-image bbox label
+                    points = _xyxy_to_four_corners(0, 0, orig_w, orig_h)
+                    label = LabelItem(
+                        class_id=cls_id,
+                        class_name=cls_name,
+                        label_type="bbox",
+                        points=points,
                         color=_color_for_class(cls_id),
                     )
                     labels.append(label)

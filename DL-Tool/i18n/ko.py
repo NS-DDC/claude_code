@@ -147,7 +147,7 @@ KO = {
     "help_shortcut_undo": "Ctrl+Z : 실행 취소",
     "help_shortcut_redo": "Ctrl+Y : 다시 실행",
     "help_shortcut_delete": "Delete : 선택 라벨 삭제",
-    "help_shortcut_prev": "A : 이전 이미지",
+    "help_shortcut_prev": "A : 이전 이미지 (저장 안함)",
     "help_shortcut_next_save": "S : 저장 후 다음 이미지",
     "help_shortcut_next_no_save": "D : 저장 안하고 다음 이미지",
     "help_shortcut_exclude": "F : 학습에서 제외 (이미지/라벨/GT 삭제)",
@@ -162,7 +162,7 @@ KO = {
     "help_tool_select": "선택 모드 (V): 라벨을 클릭하여 선택하고, 핸들을 드래그하여 크기 조절 및 이동할 수 있습니다.",
     "help_tool_bbox": "Detection 모드 (B): Rectangle 모드에서는 드래그로 박스를 그립니다. Polygon 모드에서는 클릭으로 점을 찍고 Enter나 우클릭으로 완료합니다.",
     "help_tool_segmentation": "Segmentation 모드 (S): 좌클릭 드래그로 브러시 그리기, 우클릭으로 지우기. Ctrl+클릭으로 폴리곤 그리기 (Enter/우클릭으로 완료).",
-    "help_tip_zoom": "마우스 휠로 확대/축소, Ctrl+휠로 브러시 크기 조절.",
+    "help_tip_zoom": "마우스 휠로 확대/축소, +/- 키로 브러시 크기 조절.",
     "help_tip_pan": "마우스 중간 버튼(휠 클릭)으로 화면 이동.",
     "help_tip_brush": "브러시 모양(원형/사각형)과 크기를 툴바에서 선택 가능.",
     "help_tip_bbox_mode": "BBox 모드를 Rectangle/Polygon 중 선택 가능.",
@@ -172,5 +172,94 @@ KO = {
     "help_tip_save_extension": "툴바의 '저장 확장자' 드롭다운에서 이미지 저장 형식(원본/PNG/JPG 등)을 선택하세요. Ctrl+S 저장 시 선택한 형식으로 저장됩니다.",
     "help_tip_recent_folders": "파일 > 최근 폴더 메뉴에서 최근 작업한 폴더를 빠르게 열 수 있습니다.",
     "help_tip_exclude": "F키로 현재 이미지를 학습에서 제외할 수 있습니다. 원본, 라벨, GT 이미지가 모두 삭제됩니다.",
+    "help_tip_mask_edit": "SELECT 모드에서 마스크 라벨을 더블클릭하면 기존 마스크를 브러시로 수정할 수 있습니다.",
+    "help_tip_import_labels": "파일 > 외부 라벨/GT 가져오기로 다른 곳에서 작업한 라벨과 GT를 현재 프로젝트로 가져올 수 있습니다.",
+    "help_tip_label_format": "라벨 파일은 '클래스명 클래스ID 좌표...' 형식으로 저장됩니다. 기존 형식도 호환됩니다.",
+    "help_tip_resume_work": "이미지 폴더를 열면 기존 labels/, gt_image/ 작업을 자동으로 불러와 이어서 편집할 수 있습니다.",
+    "help_shortcut_brush_plus": "+ : 브러시 크기 증가 (+5)",
+    "help_shortcut_brush_minus": "- : 브러시 크기 감소 (-5)",
+    "help_shortcut_zoom_in": "Ctrl++ : 이미지 확대",
+    "help_shortcut_zoom_out": "Ctrl+- : 이미지 축소",
     "help_close": "닫기",
+
+    # Menu - Help
+    "menu_help": "도움말(&H)",
+    "action_help_dialog": "도움말 대화상자",
+    "action_toggle_help_panel": "도움말 패널 표시",
+
+    # Help dock
+    "help_dock_title": "도움말 (F1 또는 ? 버튼)",
+
+    # Recent menus
+    "menu_recent_dirs": "최근 폴더",
+    "menu_recent_models": "최근 모델",
+    "menu_recent_none": "(없음)",
+    "menu_recent_clear": "목록 지우기",
+
+    # Navigation actions
+    "action_prev_image": "이전 이미지 (A)",
+    "action_next_save": "저장 후 다음 이미지 (S)",
+    "action_next_no_save": "저장 안하고 다음 이미지 (D)",
+    "action_exclude_training": "학습에서 제외 (F)",
+
+    # Settings
+    "action_set_save_extension": "저장 이미지 확장자 설정...",
+    "help_tooltip": "도움말 열기/닫기 (F1)",
+
+    # Save extension
+    "save_ext_label": "저장 확장자:",
+    "save_ext_original": "원본",
+    "save_ext_tooltip": "이미지 저장 시 사용할 확장자",
+
+    # Navigation buttons
+    "nav_prev": "◀ 이전 [A]",
+    "nav_prev_tooltip": "이전 이미지로 이동 (단축키: A)",
+    "nav_next_save": "저장O 다음 [S]",
+    "nav_next_save_tooltip": "현재 작업을 저장하고 다음 이미지로 이동 (단축키: S)",
+    "nav_next_no_save": "저장X 다음 [D]",
+    "nav_next_no_save_tooltip": "현재 작업을 저장하지 않고 다음 이미지로 이동 (단축키: D)",
+
+    # Toolbar labels
+    "toolbar_bbox_mode": "BBox 모드:",
+    "toolbar_brush": "브러시:",
+    "toolbar_finish": "완료 [Enter]",
+
+    # Status messages
+    "status_next_no_save": "다음 이미지 (저장 안함)",
+    "status_next_with_save": "저장 후 다음 이미지로 이동",
+    "status_prev_image": "이전 이미지로 이동",
+    "status_skipped": "다음 이미지로 건너뛰기 (저장 안함)",
+
+    # Exclude from training
+    "exclude_title": "학습에서 제외",
+    "exclude_confirm": "'{name}'을(를) 학습에서 제외하시겠습니까?\n\n다음 항목들이 삭제됩니다:\n- 원본 이미지\n- 라벨 파일 (.txt)\n- GT 이미지 파일들\n- images 폴더의 복사본",
+    "exclude_done": "'{name}' 학습에서 제외됨 (삭제 완료)",
+
+    # Folder not found
+    "folder_not_found_title": "폴더를 찾을 수 없음",
+    "folder_not_found_msg": "폴더가 존재하지 않습니다:\n{path}",
+    "model_not_found_title": "모델 파일을 찾을 수 없음",
+    "model_not_found_msg": "모델 파일이 존재하지 않습니다:\n{path}",
+
+    # Save extension dialog
+    "save_ext_dialog_title": "기본 저장 이미지 확장자 설정",
+    "save_ext_dialog_msg": "현재 설정: {current}\n\n자동 저장 시 사용할 이미지 형식을 선택하세요:\n(Ctrl+S로 전체 저장 시에는 별도 선택 가능)",
+    "save_ext_use_original": "원본 확장자 사용",
+    "save_ext_status": "기본 저장 확장자: {ext}",
+    "save_ext_display_original": "원본 확장자",
+    "save_ext_toolbar_status": "저장 확장자: {ext}",
+
+    # Import external labels
+    "action_import_labels": "외부 라벨/GT 가져오기...",
+    "import_select_folder": "외부 라벨 폴더 선택",
+    "import_no_project": "먼저 이미지 폴더를 열어주세요.",
+    "import_no_data": "선택한 폴더에 labels/ 또는 gt_image/ 폴더가 없습니다.",
+    "import_complete": "가져오기 완료: {labels}개 라벨, {gt}개 GT 이미지 복사됨",
+
+    # Mask edit
+    "mask_edit_status": "마스크 편집 모드 - 브러시로 수정 후 Enter로 완료",
+
+    # Export mask format
+    "export_mask_format_title": "마스크 형식 선택",
+    "export_mask_format_message": "다중 라벨 시맨틱 마스크로 내보내시겠습니까?\n예: 픽셀값 = 클래스 ID + 1 (시맨틱 세그멘테이션)\n아니오: 바이너리 마스크 (전경=255, 배경=0)",
 }

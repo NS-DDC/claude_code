@@ -1,6 +1,7 @@
 """Main window for VisionAce application."""
 
 import os
+import shutil
 
 from PySide6.QtWidgets import (
     QMainWindow, QSplitter, QFileDialog, QMessageBox,
@@ -20,7 +21,6 @@ from ui.file_list_widget import FileListWidget
 from ui.label_list_widget import LabelListWidget
 from ui.toolbar_widget import ToolbarWidget, ToolMode
 from ui.auto_label_dialog import AutoLabelDialog
-from ui.training_dialog import TrainingDialog
 from ui.help_dialog import HelpDialog
 from ui.help_panel import HelpPanel
 
@@ -73,7 +73,7 @@ class MainWindow(QMainWindow):
         self.setStatusBar(self._status_bar)
 
         # Help dock widget (collapsible panel)
-        self._help_dock = QDockWidget("도움말 (F1 또는 ? 버튼)", self)
+        self._help_dock = QDockWidget(tr("help_dock_title"), self)
         self._help_panel = HelpPanel(self)
         self._help_dock.setWidget(self._help_panel)
         self._help_dock.setFeatures(
@@ -98,7 +98,7 @@ class MainWindow(QMainWindow):
         file_menu.addAction(self._action_open)
 
         # Recent directories submenu
-        self._recent_dirs_menu = file_menu.addMenu("최근 폴더")
+        self._recent_dirs_menu = file_menu.addMenu(tr("menu_recent_dirs"))
         self._update_recent_directories_menu()
 
         file_menu.addSeparator()
@@ -108,7 +108,7 @@ class MainWindow(QMainWindow):
         file_menu.addAction(self._action_load_model)
 
         # Recent models submenu
-        self._recent_models_menu = file_menu.addMenu("최근 모델")
+        self._recent_models_menu = file_menu.addMenu(tr("menu_recent_models"))
         self._update_recent_models_menu()
 
         file_menu.addSeparator()
@@ -121,6 +121,13 @@ class MainWindow(QMainWindow):
         self._action_export_mask = QAction(tr("action_export_masks"), self)
         self._action_export_mask.triggered.connect(self._on_export_masks)
         file_menu.addAction(self._action_export_mask)
+
+        file_menu.addSeparator()
+
+        # Import external labels/GT
+        self._action_import_labels = QAction(tr("action_import_labels"), self)
+        self._action_import_labels.triggered.connect(self._on_import_external_labels)
+        file_menu.addAction(self._action_import_labels)
 
         file_menu.addSeparator()
 
@@ -152,22 +159,22 @@ class MainWindow(QMainWindow):
         edit_menu.addSeparator()
 
         # Navigation shortcuts
-        self._action_prev_image = QAction("이전 이미지 (A)", self)
+        self._action_prev_image = QAction(tr("action_prev_image"), self)
         self._action_prev_image.setShortcut(QKeySequence("A"))
         self._action_prev_image.triggered.connect(self._on_prev_image)
         edit_menu.addAction(self._action_prev_image)
 
-        self._action_next_with_save = QAction("저장 후 다음 이미지 (S)", self)
+        self._action_next_with_save = QAction(tr("action_next_save"), self)
         self._action_next_with_save.setShortcut(QKeySequence("S"))
         self._action_next_with_save.triggered.connect(self._on_next_with_save)
         edit_menu.addAction(self._action_next_with_save)
 
-        self._action_next_no_save = QAction("저장 안하고 다음 이미지 (D)", self)
+        self._action_next_no_save = QAction(tr("action_next_no_save"), self)
         self._action_next_no_save.setShortcut(QKeySequence("D"))
         self._action_next_no_save.triggered.connect(self._on_next_without_save)
         edit_menu.addAction(self._action_next_no_save)
 
-        self._action_exclude_from_training = QAction("학습에서 제외 (F)", self)
+        self._action_exclude_from_training = QAction(tr("action_exclude_training"), self)
         self._action_exclude_from_training.setShortcut(QKeySequence("F"))
         self._action_exclude_from_training.triggered.connect(self._on_exclude_from_training)
         edit_menu.addAction(self._action_exclude_from_training)
@@ -179,18 +186,14 @@ class MainWindow(QMainWindow):
         self._action_auto_label.triggered.connect(self._on_auto_label)
         tools_menu.addAction(self._action_auto_label)
 
-        self._action_train = QAction(tr("action_training"), self)
-        self._action_train.triggered.connect(self._on_training)
-        tools_menu.addAction(self._action_train)
-
         # --- Settings menu ---
         settings_menu = menubar.addMenu(tr("menu_settings"))
 
-        self._action_set_label_dir = QAction(tr("action_set_label_dir") if tr("action_set_label_dir") != "action_set_label_dir" else "Set Label Folder...", self)
+        self._action_set_label_dir = QAction(tr("action_set_label_dir"), self)
         self._action_set_label_dir.triggered.connect(self._on_set_label_dir)
         settings_menu.addAction(self._action_set_label_dir)
 
-        self._action_set_save_extension = QAction("저장 이미지 확장자 설정...", self)
+        self._action_set_save_extension = QAction(tr("action_set_save_extension"), self)
         self._action_set_save_extension.triggered.connect(self._on_set_save_extension)
         settings_menu.addAction(self._action_set_save_extension)
 
@@ -205,14 +208,14 @@ class MainWindow(QMainWindow):
         settings_menu.addAction(self._action_lang_en)
 
         # --- Help menu ---
-        help_menu = menubar.addMenu(tr("menu_help") if tr("menu_help") != "menu_help" else "&Help")
+        help_menu = menubar.addMenu(tr("menu_help"))
 
-        self._action_toggle_help_panel = QAction("도움말 패널 표시", self)
+        self._action_toggle_help_panel = QAction(tr("action_toggle_help_panel"), self)
         self._action_toggle_help_panel.setCheckable(True)
         self._action_toggle_help_panel.toggled.connect(self._on_toggle_help_panel)
         help_menu.addAction(self._action_toggle_help_panel)
 
-        self._action_help_dialog = QAction(tr("action_help_dialog") if tr("action_help_dialog") != "action_help_dialog" else "Help Dialog", self)
+        self._action_help_dialog = QAction(tr("action_help_dialog"), self)
         self._action_help_dialog.triggered.connect(self._on_help)
         help_menu.addAction(self._action_help_dialog)
 
@@ -249,6 +252,8 @@ class MainWindow(QMainWindow):
         self._canvas.zoom_changed.connect(self._on_zoom_changed)
         self._canvas.skip_image_requested.connect(self._on_skip_image)
         self._canvas.label_delete_requested.connect(self._on_delete_instance)
+        self._canvas.brush_size_changed_from_canvas.connect(self._on_canvas_brush_size_changed)
+        self._canvas.edit_mask_requested.connect(self._on_edit_mask_requested)
 
         # Label list signals
         self._label_list.class_selected.connect(self._on_class_selected)
@@ -303,7 +308,6 @@ class MainWindow(QMainWindow):
 
         import cv2
         from pathlib import Path
-        import shutil
 
         # Get extension from toolbar
         extension = self._toolbar.get_save_extension()
@@ -335,7 +339,9 @@ class MainWindow(QMainWindow):
                     h, w = img.shape[:2]
                     label_path = self._project.get_label_path(img_path)
                     if label_path:
-                        ExportManager.save_yolo_txt(bbox_polygon_labels, w, h, label_path)
+                        classes = self._label_list.get_classes()
+                        class_names = {i: c["name"] for i, c in enumerate(classes)}
+                        ExportManager.save_yolo_txt(bbox_polygon_labels, w, h, label_path, class_names)
                         label_count += 1
 
             # Save GT images for segmentation masks (organized by class)
@@ -386,7 +392,7 @@ class MainWindow(QMainWindow):
             status_parts.append(f"{image_count} images copied")
 
         if status_parts:
-            self._status_bar.showMessage(f"✓ Saved: {', '.join(status_parts)}", 5000)
+            self._status_bar.showMessage(f"Saved: {', '.join(status_parts)}", 5000)
         else:
             self._status_bar.showMessage("No labels to save", 3000)
 
@@ -402,11 +408,8 @@ class MainWindow(QMainWindow):
         # Ask user for mask format
         reply = QMessageBox.question(
             self,
-            tr("export_mask_format_title") if hasattr(self, "tr") else "Mask Format Selection",
-            tr("export_mask_format_message") if hasattr(self, "tr") else
-            "Export as multi-label semantic mask?\n"
-            "Yes: Pixel value = Class ID + 1 (semantic segmentation)\n"
-            "No: Binary mask (foreground=255, background=0)",
+            tr("export_mask_format_title"),
+            tr("export_mask_format_message"),
             QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
         )
         multi_label = (reply == QMessageBox.StandardButton.Yes)
@@ -436,6 +439,68 @@ class MainWindow(QMainWindow):
             f"Exported {count} {mask_type} mask files to gt_image/", 3000
         )
 
+    def _on_import_external_labels(self):
+        """Import labels and GT images from an external folder."""
+        if not self._project.image_dir:
+            QMessageBox.warning(self, tr("warning"), tr("import_no_project"))
+            return
+
+        from pathlib import Path
+
+        ext_dir = QFileDialog.getExistingDirectory(
+            self, tr("import_select_folder"), self._config.recent_image_dir
+        )
+        if not ext_dir:
+            return
+
+        ext_path = Path(ext_dir)
+        ext_labels_dir = ext_path / "labels"
+        ext_gt_dir = ext_path / "gt_image"
+
+        if not ext_labels_dir.exists() and not ext_gt_dir.exists():
+            QMessageBox.warning(self, tr("warning"), tr("import_no_data"))
+            return
+
+        project_path = Path(self._project.image_dir)
+        label_count = 0
+        gt_count = 0
+
+        # Copy label files
+        if ext_labels_dir.exists():
+            dest_labels_dir = project_path / "labels"
+            dest_labels_dir.mkdir(parents=True, exist_ok=True)
+            for label_file in ext_labels_dir.iterdir():
+                if label_file.is_file() and label_file.suffix == ".txt":
+                    dest = dest_labels_dir / label_file.name
+                    shutil.copy2(str(label_file), str(dest))
+                    label_count += 1
+
+        # Copy GT images (preserving class directory structure)
+        if ext_gt_dir.exists():
+            dest_gt_dir = project_path / "gt_image"
+            dest_gt_dir.mkdir(parents=True, exist_ok=True)
+            for class_dir in ext_gt_dir.iterdir():
+                if class_dir.is_dir():
+                    dest_class_dir = dest_gt_dir / class_dir.name
+                    dest_class_dir.mkdir(parents=True, exist_ok=True)
+                    for gt_file in class_dir.iterdir():
+                        if gt_file.is_file():
+                            dest = dest_class_dir / gt_file.name
+                            shutil.copy2(str(gt_file), str(dest))
+                            gt_count += 1
+
+        self._status_bar.showMessage(
+            tr("import_complete").format(labels=label_count, gt=gt_count), 5000
+        )
+
+        # Reload current image labels
+        if self._current_image_path:
+            self._labels.clear_labels(self._current_image_path)
+            self._load_labels_from_disk(self._current_image_path)
+            labels = self._labels.get_labels(self._current_image_path)
+            self._canvas.display_labels(labels)
+            self._label_list.set_instances(labels)
+
     def _on_undo(self):
         self._labels.undo_stack.undo()
 
@@ -463,17 +528,6 @@ class MainWindow(QMainWindow):
             self,
         )
         dialog.labels_generated.connect(self._on_auto_labels_received)
-        dialog.exec()
-
-    def _on_training(self):
-        classes = self._label_list.get_classes()
-        class_names = [c["name"] for c in classes]
-        dialog = TrainingDialog(
-            class_names,
-            self._project.image_dir or "",
-            self,
-        )
-        dialog.training_complete.connect(self._on_training_complete)
         dialog.exec()
 
     def _on_help(self):
@@ -505,21 +559,14 @@ class MainWindow(QMainWindow):
     def _on_set_label_dir(self):
         """Set a custom label directory."""
         if not self._project.image_dir:
-            QMessageBox.warning(
-                self,
-                tr("warning"),
-                tr("label_dir_no_project") if tr("label_dir_no_project") != "label_dir_no_project" else "Please open an image folder first."
-            )
+            QMessageBox.warning(self, tr("warning"), tr("label_dir_no_project"))
             return
 
         # Provide option to use default or custom
         reply = QMessageBox.question(
             self,
-            tr("label_dir_title") if tr("label_dir_title") != "label_dir_title" else "Label Folder",
-            tr("label_dir_message") if tr("label_dir_message") != "label_dir_message" else
-            "Do you want to specify a custom label folder?\n\n"
-            "Yes: Choose a custom folder\n"
-            "No: Use default labels/ subfolder",
+            tr("label_dir_title"),
+            tr("label_dir_message"),
             QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No | QMessageBox.StandardButton.Cancel
         )
 
@@ -532,28 +579,22 @@ class MainWindow(QMainWindow):
         else:
             # Choose custom directory
             path = QFileDialog.getExistingDirectory(
-                self,
-                tr("select_label_folder") if tr("select_label_folder") != "select_label_folder" else "Select Label Folder",
-                str(self._project.image_dir)
+                self, tr("select_label_folder"), str(self._project.image_dir)
             )
             if path:
                 if self._project.set_custom_label_dir(path):
                     self._status_bar.showMessage(f"Label folder set to: {path}", 3000)
                 else:
-                    QMessageBox.critical(
-                        self,
-                        tr("error"),
-                        tr("label_dir_error") if tr("label_dir_error") != "label_dir_error" else "Failed to set label folder."
-                    )
+                    QMessageBox.critical(self, tr("error"), tr("label_dir_error"))
 
     def _on_set_save_extension(self):
         """Set default save image extension."""
         from PySide6.QtWidgets import QInputDialog
 
         current_ext = self._config.default_save_extension
-        current_display = "원본 확장자" if not current_ext else current_ext.upper()
+        current_display = tr("save_ext_display_original") if not current_ext else current_ext.upper()
 
-        extensions = ["원본 확장자 사용", "PNG", "JPG", "BMP", "TIFF"]
+        extensions = [tr("save_ext_use_original"), "PNG", "JPG", "BMP", "TIFF"]
         # Find current index
         current_idx = 0
         if current_ext == ".png":
@@ -567,20 +608,20 @@ class MainWindow(QMainWindow):
 
         extension, ok = QInputDialog.getItem(
             self,
-            "기본 저장 이미지 확장자 설정",
-            f"현재 설정: {current_display}\n\n자동 저장 시 사용할 이미지 형식을 선택하세요:\n(Ctrl+S로 전체 저장 시에는 별도 선택 가능)",
+            tr("save_ext_dialog_title"),
+            tr("save_ext_dialog_msg").format(current=current_display),
             extensions,
             current_idx,
             False
         )
 
         if ok:
-            if extension == "원본 확장자 사용":
+            if extension == tr("save_ext_use_original"):
                 self._config.default_save_extension = ""
             else:
                 self._config.default_save_extension = f".{extension.lower()}"
             self._config.save()
-            self._status_bar.showMessage(f"기본 저장 확장자: {extension}", 3000)
+            self._status_bar.showMessage(tr("save_ext_status").format(ext=extension), 3000)
 
     # --- Signal handlers ---
 
@@ -647,7 +688,7 @@ class MainWindow(QMainWindow):
             # Restore auto-save setting
             self._config.auto_save = auto_save_backup
 
-            self._status_bar.showMessage("Skipped to next image (not saved)", 2000)
+            self._status_bar.showMessage(tr("status_skipped"), 2000)
 
     @Slot()
     def _on_next_without_save(self):
@@ -664,7 +705,7 @@ class MainWindow(QMainWindow):
             # Restore auto-save setting
             self._config.auto_save = auto_save_backup
 
-            self._status_bar.showMessage("다음 이미지 (저장 안함)", 2000)
+            self._status_bar.showMessage(tr("status_next_no_save"), 2000)
 
     @Slot()
     def _on_next_with_save(self):
@@ -678,16 +719,23 @@ class MainWindow(QMainWindow):
             # Move to next image
             self._file_list.select_image(current_idx + 1)
 
-            self._status_bar.showMessage("저장 후 다음 이미지로 이동", 2000)
+            self._status_bar.showMessage(tr("status_next_with_save"), 2000)
 
     @Slot()
     def _on_prev_image(self):
-        """Move to previous image with auto-save."""
+        """Move to previous image WITHOUT saving (changed from auto-save)."""
         current_idx = self._file_list.current_index()
         if current_idx > 0:
-            # Auto-save will happen in _on_image_selected if enabled
+            # Temporarily disable auto-save so A key doesn't save
+            auto_save_backup = self._config.auto_save
+            self._config.auto_save = False
+
             self._file_list.select_image(current_idx - 1)
-            self._status_bar.showMessage("이전 이미지로 이동", 2000)
+
+            # Restore auto-save setting
+            self._config.auto_save = auto_save_backup
+
+            self._status_bar.showMessage(tr("status_prev_image"), 2000)
 
     @Slot()
     def _on_exclude_from_training(self):
@@ -700,13 +748,8 @@ class MainWindow(QMainWindow):
         img_name = Path(self._current_image_path).name
         reply = QMessageBox.question(
             self,
-            "학습에서 제외",
-            f"'{img_name}'을(를) 학습에서 제외하시겠습니까?\n\n"
-            "다음 항목들이 삭제됩니다:\n"
-            "- 원본 이미지\n"
-            "- 라벨 파일 (.txt)\n"
-            "- GT 이미지 파일들\n"
-            "- images 폴더의 복사본",
+            tr("exclude_title"),
+            tr("exclude_confirm").format(name=img_name),
             QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
         )
 
@@ -758,15 +801,15 @@ class MainWindow(QMainWindow):
         # Reload project to update file list
         self._project.open_folder(self._project.image_dir)
 
-        self._status_bar.showMessage(f"'{img_name}' 학습에서 제외됨 (삭제 완료)", 3000)
+        self._status_bar.showMessage(tr("exclude_done").format(name=img_name), 3000)
 
     @Slot(str)
     def _on_save_extension_changed(self, extension: str):
         """Update default save extension when toolbar combo changes."""
         self._config.default_save_extension = extension
         self._config.save()
-        ext_display = extension if extension else "원본"
-        self._status_bar.showMessage(f"저장 확장자: {ext_display}", 2000)
+        ext_display = extension if extension else tr("save_ext_original")
+        self._status_bar.showMessage(tr("save_ext_toolbar_status").format(ext=ext_display), 2000)
 
     @Slot(str)
     def _on_mode_changed(self, mode: str):
@@ -776,6 +819,28 @@ class MainWindow(QMainWindow):
     def _on_brush_size_changed(self, size: int):
         """Update canvas brush size."""
         self._canvas.set_brush_size(size)
+
+    @Slot(int)
+    def _on_canvas_brush_size_changed(self, size: int):
+        """Update toolbar slider when canvas changes brush size via +/- keys."""
+        self._toolbar.set_brush_size(size)
+
+    @Slot(int)
+    def _on_edit_mask_requested(self, index: int):
+        """Handle request to edit an existing mask label."""
+        if not self._current_image_path:
+            return
+        labels = self._labels.get_labels(self._current_image_path)
+        if 0 <= index < len(labels):
+            label = labels[index]
+            if label.label_type == "mask" and label.mask_data is not None:
+                # Load mask into canvas for editing
+                self._canvas.load_mask_for_editing(label.mask_data.copy(), label.color)
+                # Remove the old label
+                self._labels.remove_label(self._current_image_path, index)
+                # Switch to segmentation mode
+                self._toolbar.set_mode(ToolMode.SEGMENTATION)
+                self._status_bar.showMessage(tr("mask_edit_status"), 3000)
 
     @Slot(str)
     def _on_brush_shape_changed(self, shape: str):
@@ -872,25 +937,13 @@ class MainWindow(QMainWindow):
         for label in labels:
             self._labels.add_label(image_path, label)
 
-    @Slot(str)
-    def _on_training_complete(self, best_path: str):
-        QMessageBox.information(
-            self, tr("info"),
-            tr("training_complete").format(path=best_path)
-        )
-
     # --- Helpers ---
 
     def _load_labels_from_disk(self, image_path: str):
-        """Load labels from YOLO txt file if exists (lazy, uses canvas size)."""
+        """Load labels from YOLO txt file and GT masks if they exist."""
         if self._labels.get_labels(image_path):
             return  # Already loaded
 
-        label_path = self._project.get_label_path(image_path)
-        if not label_path or not os.path.isfile(label_path):
-            return
-
-        # Use canvas image size (already loaded) instead of cv2.imread
         w, h = self._canvas.get_image_size()
         if w == 0 or h == 0:
             return
@@ -898,11 +951,32 @@ class MainWindow(QMainWindow):
         classes = self._label_list.get_classes()
         class_names = {i: c["name"] for i, c in enumerate(classes)}
 
-        labels = ExportManager.load_yolo_txt(label_path, w, h, class_names)
-        if labels:
-            for label in labels:
-                label.color = self._label_list.get_class_color(label.class_id)
-            self._labels.set_labels(image_path, labels)
+        all_labels = []
+
+        # Load YOLO txt labels
+        label_path = self._project.get_label_path(image_path)
+        if label_path and os.path.isfile(label_path):
+            labels = ExportManager.load_yolo_txt(label_path, w, h, class_names)
+            if labels:
+                for label in labels:
+                    label.color = self._label_list.get_class_color(label.class_id)
+                all_labels.extend(labels)
+
+        # Load GT masks from gt_image/ directory
+        from pathlib import Path
+        if self._project.image_dir:
+            gt_image_dir = Path(self._project.image_dir) / "gt_image"
+            if gt_image_dir.exists():
+                gt_labels = ExportManager.load_gt_masks(
+                    str(gt_image_dir), image_path, w, h, class_names
+                )
+                if gt_labels:
+                    for label in gt_labels:
+                        label.color = self._label_list.get_class_color(label.class_id)
+                    all_labels.extend(gt_labels)
+
+        if all_labels:
+            self._labels.set_labels(image_path, all_labels)
 
     def _save_current_labels(self):
         """Save labels for current image to disk."""
@@ -915,7 +989,6 @@ class MainWindow(QMainWindow):
             return
 
         from pathlib import Path
-        import shutil
 
         # If no labels, delete existing txt file and GT images
         if not labels:
@@ -945,7 +1018,9 @@ class MainWindow(QMainWindow):
         if bbox_polygon_labels:
             label_path = self._project.get_label_path(self._current_image_path)
             if label_path:
-                ExportManager.save_yolo_txt(bbox_polygon_labels, w, h, label_path)
+                classes = self._label_list.get_classes()
+                class_names = {i: c["name"] for i, c in enumerate(classes)}
+                ExportManager.save_yolo_txt(bbox_polygon_labels, w, h, label_path, class_names)
                 saved_items.append(f"{len(bbox_polygon_labels)} labels")
         else:
             # No bbox/polygon labels, delete txt file if exists
@@ -1019,6 +1094,7 @@ class MainWindow(QMainWindow):
         self._label_list.retranslate()
         self._canvas.retranslate()
         self._help_panel.retranslate()
+        self._help_dock.setWindowTitle(tr("help_dock_title"))
 
         # Re-create menus
         self.menuBar().clear()
@@ -1030,7 +1106,7 @@ class MainWindow(QMainWindow):
 
         recent_dirs = self._config.recent_directories
         if not recent_dirs:
-            no_recent_action = QAction("(없음)", self)
+            no_recent_action = QAction(tr("menu_recent_none"), self)
             no_recent_action.setEnabled(False)
             self._recent_dirs_menu.addAction(no_recent_action)
             return
@@ -1045,7 +1121,7 @@ class MainWindow(QMainWindow):
 
         # Add separator and clear option
         self._recent_dirs_menu.addSeparator()
-        clear_action = QAction("목록 지우기", self)
+        clear_action = QAction(tr("menu_recent_clear"), self)
         clear_action.triggered.connect(self._on_clear_recent_directories)
         self._recent_dirs_menu.addAction(clear_action)
 
@@ -1059,8 +1135,8 @@ class MainWindow(QMainWindow):
         else:
             QMessageBox.warning(
                 self,
-                "폴더를 찾을 수 없음",
-                f"폴더가 존재하지 않습니다:\n{path}"
+                tr("folder_not_found_title"),
+                tr("folder_not_found_msg").format(path=path)
             )
 
     def _on_clear_recent_directories(self):
@@ -1075,7 +1151,7 @@ class MainWindow(QMainWindow):
 
         recent_models = self._config.recent_models
         if not recent_models:
-            no_recent_action = QAction("(없음)", self)
+            no_recent_action = QAction(tr("menu_recent_none"), self)
             no_recent_action.setEnabled(False)
             self._recent_models_menu.addAction(no_recent_action)
             return
@@ -1090,7 +1166,7 @@ class MainWindow(QMainWindow):
 
         # Add separator and clear option
         self._recent_models_menu.addSeparator()
-        clear_action = QAction("목록 지우기", self)
+        clear_action = QAction(tr("menu_recent_clear"), self)
         clear_action.triggered.connect(self._on_clear_recent_models)
         self._recent_models_menu.addAction(clear_action)
 
@@ -1115,8 +1191,8 @@ class MainWindow(QMainWindow):
         else:
             QMessageBox.warning(
                 self,
-                "모델 파일을 찾을 수 없음",
-                f"모델 파일이 존재하지 않습니다:\n{path}"
+                tr("model_not_found_title"),
+                tr("model_not_found_msg").format(path=path)
             )
 
     def _on_clear_recent_models(self):

@@ -147,7 +147,7 @@ EN = {
     "help_shortcut_undo": "Ctrl+Z : Undo",
     "help_shortcut_redo": "Ctrl+Y : Redo",
     "help_shortcut_delete": "Delete : Delete selected label",
-    "help_shortcut_prev": "A : Previous image",
+    "help_shortcut_prev": "A : Previous image (no save)",
     "help_shortcut_next_save": "S : Save and next image",
     "help_shortcut_next_no_save": "D : Next image without saving",
     "help_shortcut_exclude": "F : Exclude from training (delete image/label/GT)",
@@ -162,7 +162,7 @@ EN = {
     "help_tool_select": "Select mode (V): Click to select labels, drag handles to resize/move.",
     "help_tool_bbox": "Detection mode (B): Rectangle mode - drag to draw. Polygon mode - click to add points, Enter/right-click to finish.",
     "help_tool_segmentation": "Segmentation mode (S): Left-click drag to brush, right-click to erase. Ctrl+click for polygon mode (Enter/right-click to finish).",
-    "help_tip_zoom": "Mouse wheel to zoom, Ctrl+wheel to change brush size.",
+    "help_tip_zoom": "Mouse wheel to zoom, +/- keys to change brush size.",
     "help_tip_pan": "Middle mouse button to pan.",
     "help_tip_brush": "Choose brush shape (circle/square) and size from toolbar.",
     "help_tip_bbox_mode": "Select BBox mode: Rectangle or Polygon.",
@@ -172,5 +172,94 @@ EN = {
     "help_tip_save_extension": "Select image save format (Original/PNG/JPG etc.) from 'Save Extension' dropdown in toolbar. Ctrl+S saves with selected format.",
     "help_tip_recent_folders": "Access recently opened folders quickly from File > Recent Folders menu.",
     "help_tip_exclude": "Press F to exclude current image from training. Original, label, and GT images will all be deleted.",
+    "help_tip_mask_edit": "Double-click a mask label in SELECT mode to re-edit it with the brush tool.",
+    "help_tip_import_labels": "Use File > Import External Labels/GT to import labels and GT from another folder into the current project.",
+    "help_tip_label_format": "Label files are saved as 'class_name class_id coords...'. Legacy format (class_id only) is also supported.",
+    "help_tip_resume_work": "Opening an image folder automatically loads existing labels/ and gt_image/ data so you can continue editing.",
+    "help_shortcut_brush_plus": "+ : Increase brush size (+5)",
+    "help_shortcut_brush_minus": "- : Decrease brush size (-5)",
+    "help_shortcut_zoom_in": "Ctrl++ : Zoom in",
+    "help_shortcut_zoom_out": "Ctrl+- : Zoom out",
     "help_close": "Close",
+
+    # Menu - Help
+    "menu_help": "&Help",
+    "action_help_dialog": "Help Dialog",
+    "action_toggle_help_panel": "Show Help Panel",
+
+    # Help dock
+    "help_dock_title": "Help (F1 or ? button)",
+
+    # Recent menus
+    "menu_recent_dirs": "Recent Folders",
+    "menu_recent_models": "Recent Models",
+    "menu_recent_none": "(None)",
+    "menu_recent_clear": "Clear List",
+
+    # Navigation actions
+    "action_prev_image": "Previous Image (A)",
+    "action_next_save": "Save & Next Image (S)",
+    "action_next_no_save": "Next Image without Saving (D)",
+    "action_exclude_training": "Exclude from Training (F)",
+
+    # Settings
+    "action_set_save_extension": "Set Save Image Extension...",
+    "help_tooltip": "Open/Close Help (F1)",
+
+    # Save extension
+    "save_ext_label": "Save Ext:",
+    "save_ext_original": "Original",
+    "save_ext_tooltip": "Image save extension",
+
+    # Navigation buttons
+    "nav_prev": "◀ Prev [A]",
+    "nav_prev_tooltip": "Go to previous image (Shortcut: A)",
+    "nav_next_save": "Save+Next [S]",
+    "nav_next_save_tooltip": "Save and go to next image (Shortcut: S)",
+    "nav_next_no_save": "Skip+Next [D]",
+    "nav_next_no_save_tooltip": "Go to next image without saving (Shortcut: D)",
+
+    # Toolbar labels
+    "toolbar_bbox_mode": "BBox Mode:",
+    "toolbar_brush": "Brush:",
+    "toolbar_finish": "Finish [Enter]",
+
+    # Status messages
+    "status_next_no_save": "Next image (not saved)",
+    "status_next_with_save": "Saved and moved to next image",
+    "status_prev_image": "Moved to previous image",
+    "status_skipped": "Skipped to next image (not saved)",
+
+    # Exclude from training
+    "exclude_title": "Exclude from Training",
+    "exclude_confirm": "Exclude '{name}' from training?\n\nThe following will be deleted:\n- Original image\n- Label file (.txt)\n- GT image files\n- Copy in images/ folder",
+    "exclude_done": "'{name}' excluded from training (deleted)",
+
+    # Folder not found
+    "folder_not_found_title": "Folder Not Found",
+    "folder_not_found_msg": "Folder does not exist:\n{path}",
+    "model_not_found_title": "Model File Not Found",
+    "model_not_found_msg": "Model file does not exist:\n{path}",
+
+    # Save extension dialog
+    "save_ext_dialog_title": "Set Default Save Image Extension",
+    "save_ext_dialog_msg": "Current setting: {current}\n\nSelect image format for auto-save:\n(Ctrl+S full save allows separate selection)",
+    "save_ext_use_original": "Use Original Extension",
+    "save_ext_status": "Default save extension: {ext}",
+    "save_ext_display_original": "Original Extension",
+    "save_ext_toolbar_status": "Save extension: {ext}",
+
+    # Import external labels
+    "action_import_labels": "Import External Labels/GT...",
+    "import_select_folder": "Select External Labels Folder",
+    "import_no_project": "Please open an image folder first.",
+    "import_no_data": "No labels/ or gt_image/ folder found in selected folder.",
+    "import_complete": "Import complete: {labels} labels, {gt} GT images copied",
+
+    # Mask edit
+    "mask_edit_status": "Mask edit mode - Modify with brush, Enter to finish",
+
+    # Export mask format
+    "export_mask_format_title": "Mask Format Selection",
+    "export_mask_format_message": "Export as multi-label semantic mask?\nYes: Pixel value = Class ID + 1 (semantic segmentation)\nNo: Binary mask (foreground=255, background=0)",
 }

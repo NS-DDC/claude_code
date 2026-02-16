@@ -82,7 +82,7 @@ class ToolbarWidget(QToolBar):
 
         # BBox mode selector (rectangle/polygon)
         self.addSeparator()
-        self._bbox_label = QLabel("BBox Mode:")
+        self._bbox_label = QLabel(tr("toolbar_bbox_mode"))
         self._bbox_label.setStyleSheet("padding: 0 6px; color: #ccc;")
         self.addWidget(self._bbox_label)
 
@@ -94,7 +94,7 @@ class ToolbarWidget(QToolBar):
 
         # Segmentation tools
         self.addSeparator()
-        self._seg_label = QLabel("Brush:")
+        self._seg_label = QLabel(tr("toolbar_brush"))
         self._seg_label.setStyleSheet("padding: 0 6px; color: #ccc;")
         self.addWidget(self._seg_label)
 
@@ -112,15 +112,15 @@ class ToolbarWidget(QToolBar):
 
         self._brush_size_slider = QSlider(Qt.Orientation.Horizontal)
         self._brush_size_slider.setMinimum(5)
-        self._brush_size_slider.setMaximum(100)
+        self._brush_size_slider.setMaximum(200)
         self._brush_size_slider.setValue(self._brush_size)
-        self._brush_size_slider.setFixedWidth(100)
+        self._brush_size_slider.setFixedWidth(120)
         self._brush_size_slider.valueChanged.connect(self._on_brush_size_changed)
         self.addWidget(self._brush_size_slider)
 
         # Finish polygon button
         self.addSeparator()
-        self._finish_btn = QPushButton("Finish [Enter]")
+        self._finish_btn = QPushButton(tr("toolbar_finish"))
         self._finish_btn.setFixedHeight(24)
         self._finish_btn.setStyleSheet("padding: 2px 8px;")
         self._finish_btn.clicked.connect(self.finish_polygon_requested.emit)
@@ -128,37 +128,37 @@ class ToolbarWidget(QToolBar):
 
         # Save extension selector
         self.addSeparator()
-        self._extension_label = QLabel("저장 확장자:")
+        self._extension_label = QLabel(tr("save_ext_label"))
         self._extension_label.setStyleSheet("padding: 0 6px; color: #ccc;")
         self.addWidget(self._extension_label)
 
         self._extension_combo = QComboBox()
-        self._extension_combo.addItems(["원본", "PNG", "JPG", "BMP", "TIFF"])
+        self._extension_combo.addItems([tr("save_ext_original"), "PNG", "JPG", "BMP", "TIFF"])
         self._extension_combo.setFixedWidth(80)
-        self._extension_combo.setToolTip("이미지 저장 시 사용할 확장자")
+        self._extension_combo.setToolTip(tr("save_ext_tooltip"))
         self._extension_combo.currentTextChanged.connect(self._on_extension_changed)
         self.addWidget(self._extension_combo)
 
         # Navigation buttons
         self.addSeparator()
-        self._prev_image_btn = QPushButton("◀ 이전 [A]")
+        self._prev_image_btn = QPushButton(tr("nav_prev"))
         self._prev_image_btn.setFixedHeight(24)
         self._prev_image_btn.setStyleSheet("padding: 2px 8px; background-color: #3498db; color: white;")
-        self._prev_image_btn.setToolTip("이전 이미지로 이동 (단축키: A)")
+        self._prev_image_btn.setToolTip(tr("nav_prev_tooltip"))
         self._prev_image_btn.clicked.connect(self.prev_image_requested.emit)
         self.addWidget(self._prev_image_btn)
 
-        self._next_with_save_btn = QPushButton("저장O 다음 [S]")
+        self._next_with_save_btn = QPushButton(tr("nav_next_save"))
         self._next_with_save_btn.setFixedHeight(24)
         self._next_with_save_btn.setStyleSheet("padding: 2px 8px; background-color: #27ae60; color: white;")
-        self._next_with_save_btn.setToolTip("현재 작업을 저장하고 다음 이미지로 이동 (단축키: S)")
+        self._next_with_save_btn.setToolTip(tr("nav_next_save_tooltip"))
         self._next_with_save_btn.clicked.connect(self.next_with_save_requested.emit)
         self.addWidget(self._next_with_save_btn)
 
-        self._next_without_save_btn = QPushButton("저장X 다음 [D]")
+        self._next_without_save_btn = QPushButton(tr("nav_next_no_save"))
         self._next_without_save_btn.setFixedHeight(24)
         self._next_without_save_btn.setStyleSheet("padding: 2px 8px; background-color: #e74c3c; color: white;")
-        self._next_without_save_btn.setToolTip("현재 작업을 저장하지 않고 다음 이미지로 이동 (단축키: D)")
+        self._next_without_save_btn.setToolTip(tr("nav_next_no_save_tooltip"))
         self._next_without_save_btn.clicked.connect(self.next_without_save_requested.emit)
         self.addWidget(self._next_without_save_btn)
 
@@ -166,7 +166,7 @@ class ToolbarWidget(QToolBar):
         self.addSeparator()
         self._help_action = QAction(self)
         self._help_action.setIcon(_make_help_icon())
-        self._help_action.setToolTip("도움말 열기/닫기 (F1)")
+        self._help_action.setToolTip(tr("help_tooltip"))
         self._help_action.triggered.connect(self.help_requested.emit)
         self.addAction(self._help_action)
 
@@ -200,14 +200,11 @@ class ToolbarWidget(QToolBar):
 
     def _on_extension_changed(self, text: str):
         """Handle save extension change."""
-        ext_map = {
-            "원본": "",
-            "PNG": ".png",
-            "JPG": ".jpg",
-            "BMP": ".bmp",
-            "TIFF": ".tiff"
-        }
-        extension = ext_map.get(text, "")
+        # Map display text to extension
+        if text in ("PNG", "JPG", "BMP", "TIFF"):
+            extension = f".{text.lower()}"
+        else:
+            extension = ""
         self.save_extension_changed.emit(extension)
 
     def current_mode(self) -> str:
@@ -225,34 +222,48 @@ class ToolbarWidget(QToolBar):
     def get_save_extension(self) -> str:
         """Get current save extension."""
         text = self._extension_combo.currentText()
-        ext_map = {
-            "원본": "",
-            "PNG": ".png",
-            "JPG": ".jpg",
-            "BMP": ".bmp",
-            "TIFF": ".tiff"
-        }
-        return ext_map.get(text, "")
+        if text in ("PNG", "JPG", "BMP", "TIFF"):
+            return f".{text.lower()}"
+        return ""
 
     def set_save_extension(self, extension: str):
         """Set save extension programmatically."""
         ext_to_text = {
-            "": "원본",
             ".png": "PNG",
             ".jpg": "JPG",
             ".bmp": "BMP",
             ".tiff": "TIFF"
         }
-        text = ext_to_text.get(extension, "원본")
+        text = ext_to_text.get(extension, tr("save_ext_original"))
         index = self._extension_combo.findText(text)
         if index >= 0:
             self._extension_combo.setCurrentIndex(index)
+
+    def set_brush_size(self, size: int):
+        """Set brush size programmatically and update slider."""
+        size = max(5, min(200, size))
+        self._brush_size = size
+        self._brush_size_slider.blockSignals(True)
+        self._brush_size_slider.setValue(size)
+        self._brush_size_slider.blockSignals(False)
+        self._brush_size_label.setText(f"{size}px")
 
     def retranslate(self):
         self._select_action.setText(tr("tool_select"))
         self._detection_action.setText(tr("tool_detection"))
         self._seg_action.setText(tr("tool_segmentation"))
-        self._bbox_label.setText("BBox Mode:")
-        self._seg_label.setText("Brush:")
+        self._bbox_label.setText(tr("toolbar_bbox_mode"))
+        self._seg_label.setText(tr("toolbar_brush"))
         self._brush_size_label.setText(f"{self._brush_size}px")
-        self._finish_btn.setText("Finish [Enter]")
+        self._finish_btn.setText(tr("toolbar_finish"))
+        self._extension_label.setText(tr("save_ext_label"))
+        self._extension_combo.setToolTip(tr("save_ext_tooltip"))
+        # Update extension combo first item (Original)
+        self._extension_combo.setItemText(0, tr("save_ext_original"))
+        self._prev_image_btn.setText(tr("nav_prev"))
+        self._prev_image_btn.setToolTip(tr("nav_prev_tooltip"))
+        self._next_with_save_btn.setText(tr("nav_next_save"))
+        self._next_with_save_btn.setToolTip(tr("nav_next_save_tooltip"))
+        self._next_without_save_btn.setText(tr("nav_next_no_save"))
+        self._next_without_save_btn.setToolTip(tr("nav_next_no_save_tooltip"))
+        self._help_action.setToolTip(tr("help_tooltip"))
