@@ -958,7 +958,18 @@ class MainWindow(QMainWindow):
         if label_path and os.path.isfile(label_path):
             labels = ExportManager.load_yolo_txt(label_path, w, h, class_names)
             if labels:
+                # Auto-register any new classes found in labels
                 for label in labels:
+                    existing_classes = [c["name"] for c in classes]
+                    if label.class_name not in existing_classes:
+                        self._label_list.add_class(label.class_name)
+                        classes = self._label_list.get_classes()
+                        class_names = {i: c["name"] for i, c in enumerate(classes)}
+                        # Update class_id based on newly registered class
+                        for i, c in enumerate(classes):
+                            if c["name"] == label.class_name:
+                                label.class_id = i
+                                break
                     label.color = self._label_list.get_class_color(label.class_id)
                 all_labels.extend(labels)
 
@@ -967,6 +978,18 @@ class MainWindow(QMainWindow):
         if self._project.image_dir:
             gt_image_dir = Path(self._project.image_dir) / "gt_image"
             if gt_image_dir.exists():
+                # First, auto-register any classes found in gt_image/ subdirectories
+                for class_dir in gt_image_dir.iterdir():
+                    if class_dir.is_dir():
+                        class_name = class_dir.name
+                        # Check if class already exists
+                        existing_classes = [c["name"] for c in classes]
+                        if class_name not in existing_classes:
+                            # Auto-add this class
+                            self._label_list.add_class(class_name)
+                            classes = self._label_list.get_classes()
+                            class_names = {i: c["name"] for i, c in enumerate(classes)}
+
                 gt_labels = ExportManager.load_gt_masks(
                     str(gt_image_dir), image_path, w, h, class_names
                 )
