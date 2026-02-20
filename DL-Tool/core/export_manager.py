@@ -280,13 +280,13 @@ class ExportManager:
                     if mask is None:
                         continue
 
-                    # Resize if needed
+                    # Resize if needed (always use INTER_NEAREST to avoid interpolation artifacts)
                     if mask.shape != (image_height, image_width):
                         mask = cv2.resize(mask, (image_width, image_height),
                                          interpolation=cv2.INTER_NEAREST)
 
-                    # Threshold to binary
-                    mask = (mask > 0).astype(np.uint8) * 255
+                    # Threshold to binary with high threshold (128) to reject JPEG compression noise
+                    mask = (mask >= 128).astype(np.uint8) * 255
 
                     if mask.max() == 0:
                         continue

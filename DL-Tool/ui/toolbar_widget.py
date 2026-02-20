@@ -126,19 +126,6 @@ class ToolbarWidget(QToolBar):
         self._finish_btn.clicked.connect(self.finish_polygon_requested.emit)
         self.addWidget(self._finish_btn)
 
-        # Save extension selector
-        self.addSeparator()
-        self._extension_label = QLabel(tr("save_ext_label"))
-        self._extension_label.setStyleSheet("padding: 0 6px; color: #ccc;")
-        self.addWidget(self._extension_label)
-
-        self._extension_combo = QComboBox()
-        self._extension_combo.addItems([tr("save_ext_original"), "PNG", "JPG", "BMP", "TIFF"])
-        self._extension_combo.setFixedWidth(80)
-        self._extension_combo.setToolTip(tr("save_ext_tooltip"))
-        self._extension_combo.currentTextChanged.connect(self._on_extension_changed)
-        self.addWidget(self._extension_combo)
-
         # Navigation buttons
         self.addSeparator()
         self._prev_image_btn = QPushButton(tr("nav_prev"))
@@ -198,15 +185,6 @@ class ToolbarWidget(QToolBar):
         self._bbox_mode = text.lower()
         self.bbox_mode_changed.emit(self._bbox_mode)
 
-    def _on_extension_changed(self, text: str):
-        """Handle save extension change."""
-        # Map display text to extension
-        if text in ("PNG", "JPG", "BMP", "TIFF"):
-            extension = f".{text.lower()}"
-        else:
-            extension = ""
-        self.save_extension_changed.emit(extension)
-
     def current_mode(self) -> str:
         return self._current_mode
 
@@ -220,24 +198,12 @@ class ToolbarWidget(QToolBar):
         return self._bbox_mode
 
     def get_save_extension(self) -> str:
-        """Get current save extension."""
-        text = self._extension_combo.currentText()
-        if text in ("PNG", "JPG", "BMP", "TIFF"):
-            return f".{text.lower()}"
+        """Always returns empty string (GT masks are always saved as PNG)."""
         return ""
 
     def set_save_extension(self, extension: str):
-        """Set save extension programmatically."""
-        ext_to_text = {
-            ".png": "PNG",
-            ".jpg": "JPG",
-            ".bmp": "BMP",
-            ".tiff": "TIFF"
-        }
-        text = ext_to_text.get(extension, tr("save_ext_original"))
-        index = self._extension_combo.findText(text)
-        if index >= 0:
-            self._extension_combo.setCurrentIndex(index)
+        """No-op: extension is fixed to PNG for GT masks."""
+        pass
 
     def set_brush_size(self, size: int):
         """Set brush size programmatically and update slider."""
@@ -256,10 +222,6 @@ class ToolbarWidget(QToolBar):
         self._seg_label.setText(tr("toolbar_brush"))
         self._brush_size_label.setText(f"{self._brush_size}px")
         self._finish_btn.setText(tr("toolbar_finish"))
-        self._extension_label.setText(tr("save_ext_label"))
-        self._extension_combo.setToolTip(tr("save_ext_tooltip"))
-        # Update extension combo first item (Original)
-        self._extension_combo.setItemText(0, tr("save_ext_original"))
         self._prev_image_btn.setText(tr("nav_prev"))
         self._prev_image_btn.setToolTip(tr("nav_prev_tooltip"))
         self._next_with_save_btn.setText(tr("nav_next_save"))

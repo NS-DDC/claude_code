@@ -43,9 +43,6 @@ class MainWindow(QMainWindow):
         self.resize(self._config.window_width, self._config.window_height)
         self.setWindowTitle(tr("app_title"))
 
-        # Initialize toolbar extension from config
-        self._toolbar.set_save_extension(self._config.default_save_extension)
-
     def _setup_ui(self):
         # Toolbar
         self._toolbar = ToolbarWidget(self)
@@ -193,10 +190,6 @@ class MainWindow(QMainWindow):
         self._action_set_label_dir.triggered.connect(self._on_set_label_dir)
         settings_menu.addAction(self._action_set_label_dir)
 
-        self._action_set_save_extension = QAction(tr("action_set_save_extension"), self)
-        self._action_set_save_extension.triggered.connect(self._on_set_save_extension)
-        settings_menu.addAction(self._action_set_save_extension)
-
         settings_menu.addSeparator()
 
         self._action_lang_ko = QAction(tr("action_lang_ko"), self)
@@ -231,9 +224,6 @@ class MainWindow(QMainWindow):
         self._toolbar.prev_image_requested.connect(self._on_prev_image)
         self._toolbar.next_without_save_requested.connect(self._on_next_without_save)
         self._toolbar.next_with_save_requested.connect(self._on_next_with_save)
-
-        # Save extension change
-        self._toolbar.save_extension_changed.connect(self._on_save_extension_changed)
 
         # Help - toggle help panel instead of dialog
         self._toolbar.help_requested.connect(self._on_toolbar_help)
@@ -309,9 +299,6 @@ class MainWindow(QMainWindow):
         import cv2
         from pathlib import Path
 
-        # Get extension from toolbar
-        extension = self._toolbar.get_save_extension()
-
         # Create folders
         gt_image_dir = Path(self._project.image_dir) / "gt_image"
         images_dir = Path(self._project.image_dir) / "images"
@@ -344,43 +331,29 @@ class MainWindow(QMainWindow):
                         ExportManager.save_yolo_txt(bbox_polygon_labels, w, h, label_path, class_names)
                         label_count += 1
 
-            # Save GT images for segmentation masks (organized by class)
+            # Save GT images for segmentation masks (organized by class, always PNG)
             if mask_labels:
                 img = cv2.imread(img_path)
                 if img is not None:
                     h, w = img.shape[:2]
                     img_file = Path(img_path)
 
-                    # Group masks by class name
+                    # Group masks by class name, always save as PNG (lossless)
                     for label in mask_labels:
                         class_dir = gt_image_dir / label.class_name
                         class_dir.mkdir(parents=True, exist_ok=True)
-                        # Use selected extension or original
-                        if extension:
-                            gt_filename = img_file.stem + extension
-                        else:
-                            gt_filename = img_file.name
+                        gt_filename = img_file.stem + ".png"
                         gt_image_path = class_dir / gt_filename
                         # Save individual mask for this class
                         ExportManager.save_semantic_mask([label], w, h, str(gt_image_path), multi_label=False)
                     gt_count += 1
 
-            # Copy original image to images folder
+            # Copy original image to images folder (preserve original extension)
             img_file = Path(img_path)
-            # Use selected extension or original
-            if extension:
-                dest_filename = img_file.stem + extension
-                dest_path = images_dir / dest_filename
-                # Read and save with new extension
-                img = cv2.imread(img_path)
-                if img is not None and not dest_path.exists():
-                    cv2.imwrite(str(dest_path), img)
-                    image_count += 1
-            else:
-                dest_path = images_dir / img_file.name
-                if not dest_path.exists():
-                    shutil.copy2(img_path, dest_path)
-                    image_count += 1
+            dest_path = images_dir / img_file.name
+            if not dest_path.exists():
+                shutil.copy2(img_path, dest_path)
+                image_count += 1
 
         # Show detailed status message
         status_parts = []
@@ -493,12 +466,22 @@ class MainWindow(QMainWindow):
             tr("import_complete").format(labels=label_count, gt=gt_count), 5000
         )
 
+        # Reload all image labels (clear cache so re-load picks up new files)
+        for img_path in self._project.image_list:
+            self._labels.clear_labels(img_path)
+
+        # Update file list label status
+        for i, img_path in enumerate(self._project.image_list):
+            has = self._project.has_labels(img_path)
+            self._file_list.update_label_status(i, has)
+
         # Reload current image labels
         if self._current_image_path:
-            self._labels.clear_labels(self._current_image_path)
             self._load_labels_from_disk(self._current_image_path)
             labels = self._labels.get_labels(self._current_image_path)
             self._canvas.display_labels(labels)
+            w, h = self._canvas.get_image_size()
+            self._label_list.set_image_size(w, h)
             self._label_list.set_instances(labels)
 
     def _on_undo(self):
@@ -587,48 +570,16 @@ class MainWindow(QMainWindow):
                 else:
                     QMessageBox.critical(self, tr("error"), tr("label_dir_error"))
 
-    def _on_set_save_extension(self):
-        """Set default save image extension."""
-        from PySide6.QtWidgets import QInputDialog
-
-        current_ext = self._config.default_save_extension
-        current_display = tr("save_ext_display_original") if not current_ext else current_ext.upper()
-
-        extensions = [tr("save_ext_use_original"), "PNG", "JPG", "BMP", "TIFF"]
-        # Find current index
-        current_idx = 0
-        if current_ext == ".png":
-            current_idx = 1
-        elif current_ext == ".jpg":
-            current_idx = 2
-        elif current_ext == ".bmp":
-            current_idx = 3
-        elif current_ext == ".tiff":
-            current_idx = 4
-
-        extension, ok = QInputDialog.getItem(
-            self,
-            tr("save_ext_dialog_title"),
-            tr("save_ext_dialog_msg").format(current=current_display),
-            extensions,
-            current_idx,
-            False
-        )
-
-        if ok:
-            if extension == tr("save_ext_use_original"):
-                self._config.default_save_extension = ""
-            else:
-                self._config.default_save_extension = f".{extension.lower()}"
-            self._config.save()
-            self._status_bar.showMessage(tr("save_ext_status").format(ext=extension), 3000)
-
     # --- Signal handlers ---
 
     @Slot(str)
     def _on_folder_loaded(self):
         images = self._project.image_list
         self._file_list.set_image_list(images)
+
+        # Clear label cache for all images so fresh data is loaded from disk
+        for img_path in images:
+            self._labels.remove_image(img_path)
 
         # Mark label status by checking if label files exist (fast, no image read)
         for i, img_path in enumerate(images):
@@ -645,13 +596,17 @@ class MainWindow(QMainWindow):
         if not img_path:
             return
 
-        # Finalize any unfinished brush/mask work before switching
+        # Finalize any unfinished brush/mask work before switching (always, regardless of auto_save)
         if self._current_image_path and self._canvas.has_unfinished_mask():
             self._canvas.finish_current_shape()
 
         # Auto-save previous image labels
         if self._current_image_path and self._config.auto_save:
             self._save_current_labels()
+
+        # Force save mask labels for previous image even if auto_save is off
+        # (mask labels created by finalize above need to be persisted in label_manager)
+        # This is already handled by label_created signal -> add_label
 
         self._current_image_path = img_path
         self._canvas.load_image(img_path)
@@ -665,6 +620,10 @@ class MainWindow(QMainWindow):
         w, h = self._canvas.get_image_size()
         self._label_list.set_image_size(w, h)
         self._label_list.set_instances(labels)
+
+        # If in SEGMENTATION mode and there are existing mask labels, auto-load them for editing
+        if self._canvas._mode == ToolMode.SEGMENTATION:
+            self._auto_load_mask_for_segmentation(img_path)
 
         # Update status bar
         w, h = self._canvas.get_image_size()
@@ -804,16 +763,40 @@ class MainWindow(QMainWindow):
         self._status_bar.showMessage(tr("exclude_done").format(name=img_name), 3000)
 
     @Slot(str)
-    def _on_save_extension_changed(self, extension: str):
-        """Update default save extension when toolbar combo changes."""
-        self._config.default_save_extension = extension
-        self._config.save()
-        ext_display = extension if extension else tr("save_ext_original")
-        self._status_bar.showMessage(tr("save_ext_toolbar_status").format(ext=ext_display), 2000)
-
-    @Slot(str)
     def _on_mode_changed(self, mode: str):
         self._canvas.set_mode(mode)
+        # When switching to SEGMENTATION mode, auto-load existing mask for current image
+        if mode == ToolMode.SEGMENTATION and self._current_image_path:
+            self._auto_load_mask_for_segmentation(self._current_image_path)
+
+    def _auto_load_mask_for_segmentation(self, img_path: str):
+        """If in SEGMENTATION mode and image has mask labels, auto-load them into the brush canvas."""
+        labels = self._labels.get_labels(img_path)
+        mask_labels = [l for l in labels if l.label_type == "mask"]
+        if not mask_labels:
+            return
+        import numpy as np
+        w, h = self._canvas.get_image_size()
+        if w == 0 or h == 0:
+            return
+        selected_class_id = self._label_list.selected_class_id()
+        selected_masks = [l for l in mask_labels if l.class_id == selected_class_id]
+        if not selected_masks:
+            selected_masks = mask_labels[:1]
+        combined = np.zeros((h, w), dtype=np.uint8)
+        for ml in selected_masks:
+            if ml.mask_data is not None:
+                combined = np.maximum(combined, ml.mask_data)
+        label_to_edit = selected_masks[0]
+        self._canvas.load_mask_for_editing(combined, label_to_edit.color)
+        # Remove the merged mask labels from label manager
+        current_labels = self._labels.get_labels(img_path)
+        indices_to_remove = sorted(
+            [i for i, l in enumerate(current_labels) if l in selected_masks],
+            reverse=True
+        )
+        for idx in indices_to_remove:
+            self._labels.remove_label(img_path, idx)
 
     @Slot(int)
     def _on_brush_size_changed(self, size: int):
@@ -836,10 +819,16 @@ class MainWindow(QMainWindow):
             if label.label_type == "mask" and label.mask_data is not None:
                 # Load mask into canvas for editing
                 self._canvas.load_mask_for_editing(label.mask_data.copy(), label.color)
-                # Remove the old label
+                # Remove the old label (use set_labels to update without losing others)
                 self._labels.remove_label(self._current_image_path, index)
                 # Switch to segmentation mode
                 self._toolbar.set_mode(ToolMode.SEGMENTATION)
+                # Sync class selection to match the mask's class
+                classes = self._label_list.get_classes()
+                for i, cls in enumerate(classes):
+                    if cls["name"] == label.class_name:
+                        self._label_list.select_class(i)
+                        break
                 self._status_bar.showMessage(tr("mask_edit_status"), 3000)
 
     @Slot(str)
@@ -1051,9 +1040,6 @@ class MainWindow(QMainWindow):
             if label_path and os.path.exists(label_path):
                 os.remove(label_path)
 
-        # Get default extension from config
-        extension = self._config.default_save_extension
-
         # Save GT image for segmentation masks (organized by class)
         if mask_labels:
             gt_image_dir = Path(self._project.image_dir) / "gt_image"
@@ -1062,42 +1048,27 @@ class MainWindow(QMainWindow):
             img_file = Path(self._current_image_path)
 
             # Save each mask in its class-specific folder
+            # GT masks are always saved as PNG to avoid lossy compression artifacts
             for label in mask_labels:
                 class_dir = gt_image_dir / label.class_name
                 class_dir.mkdir(parents=True, exist_ok=True)
-                # Use selected extension or original
-                if extension:
-                    gt_filename = img_file.stem + extension
-                else:
-                    gt_filename = img_file.name
+                gt_filename = img_file.stem + ".png"
                 gt_image_path = class_dir / gt_filename
                 # Save individual mask for this class
                 ExportManager.save_semantic_mask([label], w, h, str(gt_image_path), multi_label=False)
             saved_items.append(f"GT images ({len(mask_labels)} classes)")
 
-        # Copy original image to images folder if any labels exist
+        # Copy original image to images folder if any labels exist (preserve original extension)
         if labels:
-            import cv2
             images_dir = Path(self._project.image_dir) / "images"
             images_dir.mkdir(parents=True, exist_ok=True)
 
             img_file = Path(self._current_image_path)
-
-            # Use selected extension or original
-            if extension:
-                dest_filename = img_file.stem + extension
-                dest_path = images_dir / dest_filename
-                # Read and save with new extension
-                img = cv2.imread(self._current_image_path)
-                if img is not None and not dest_path.exists():
-                    cv2.imwrite(str(dest_path), img)
-                    saved_items.append("image")
-            else:
-                dest_path = images_dir / img_file.name
-                # Copy only if not already in images folder
-                if not dest_path.exists():
-                    shutil.copy2(self._current_image_path, dest_path)
-                    saved_items.append("image")
+            dest_path = images_dir / img_file.name
+            # Copy only if not already in images folder
+            if not dest_path.exists():
+                shutil.copy2(self._current_image_path, dest_path)
+                saved_items.append("image")
 
         # Show status message
         if saved_items:

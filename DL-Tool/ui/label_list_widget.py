@@ -123,6 +123,26 @@ class LabelListWidget(QWidget):
     def selected_class_id(self) -> int:
         return self._class_list.currentRow()
 
+    def add_class(self, name: str, color: str = None) -> int:
+        """Add a class programmatically. Returns the new class index."""
+        # Check if already exists
+        for i, cls in enumerate(self._classes):
+            if cls["name"] == name:
+                return i
+        if color is None:
+            color_idx = len(self._classes) % len(DEFAULT_COLORS)
+            color = DEFAULT_COLORS[color_idx]
+        self._classes.append({"name": name, "color": color})
+        self._refresh_class_list()
+        return len(self._classes) - 1
+
+    def select_class(self, index: int):
+        """Select a class by index programmatically (without triggering class_selected signal)."""
+        if 0 <= index < self._class_list.count():
+            self._class_list.blockSignals(True)
+            self._class_list.setCurrentRow(index)
+            self._class_list.blockSignals(False)
+
     def _refresh_class_list(self):
         self._class_list.clear()
         for cls in self._classes:

@@ -904,18 +904,29 @@ class CanvasWidget(QWidget):
         self.label_created.emit(label)
 
     def _on_wheel_zoom(self, delta: int, modifiers=None):
-        """Handle wheel zoom. Ctrl+Wheel = zoom, normal wheel = zoom."""
+        """Handle wheel event.
+        - SEGMENTATION mode: Ctrl+Wheel = zoom, plain Wheel = brush size change
+        - Other modes: plain Wheel = zoom
+        """
         from PySide6.QtWidgets import QApplication
         if modifiers is None:
             modifiers = QApplication.keyboardModifiers()
 
-        # Normal zoom (no modifier or Ctrl)
-        factor = 1.15 if delta > 0 else 1 / 1.15
-        self._view.scale(factor, factor)
-        # Calculate zoom level
-        transform = self._view.transform()
-        zoom = transform.m11() * 100
-        self.zoom_changed.emit(zoom)
+        ctrl_held = bool(modifiers & Qt.KeyboardModifier.ControlModifier)
+
+        if self._mode == ToolMode.SEGMENTATION and not ctrl_held:
+            # Plain wheel in segmentation mode -> adjust brush size
+            step = 5 if delta > 0 else -5
+            new_size = max(5, min(200, self._brush_size + step))
+            self.set_brush_size(new_size)
+            self.brush_size_changed_from_canvas.emit(new_size)
+        else:
+            # Ctrl+Wheel (or any wheel outside segmentation mode) -> zoom
+            factor = 1.15 if delta > 0 else 1 / 1.15
+            self._view.scale(factor, factor)
+            transform = self._view.transform()
+            zoom = transform.m11() * 100
+            self.zoom_changed.emit(zoom)
 
     def _on_key_press(self, event: QKeyEvent):
         """Handle keyboard shortcuts."""
