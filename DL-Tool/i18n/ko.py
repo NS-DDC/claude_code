@@ -262,4 +262,75 @@ KO = {
     # Export mask format
     "export_mask_format_title": "마스크 형식 선택",
     "export_mask_format_message": "다중 라벨 시맨틱 마스크로 내보내시겠습니까?\n예: 픽셀값 = 클래스 ID + 1 (시맨틱 세그멘테이션)\n아니오: 바이너리 마스크 (전경=255, 배경=0)",
+
+    # Help – Data formats section
+    "help_formats_title": "데이터 형식 & 불러오기",
+
+    "help_fmt_folder_title": "📁 폴더 구조",
+    "help_fmt_folder_body": (
+        "이미지 폴더를 열면 다음과 같은 구조로 데이터를 자동 인식합니다:\n"
+        "\n"
+        "  <이미지폴더>/\n"
+        "  ├── image1.jpg       ← 원본 이미지\n"
+        "  ├── image2.png\n"
+        "  ├── labels/          ← BBox/Polygon YOLO 라벨\n"
+        "  │   ├── image1.txt\n"
+        "  │   └── image2.txt\n"
+        "  ├── gt_image/        ← Segmentation GT 마스크\n"
+        "  │   ├── 클래스A/\n"
+        "  │   │   ├── image1.png\n"
+        "  │   │   └── image2.png\n"
+        "  │   └── 클래스B/\n"
+        "  │       └── image1.png\n"
+        "  └── images/          ← 저장 시 복사된 이미지"
+    ),
+
+    "help_fmt_yolo_title": "📄 YOLO 라벨 형식 (labels/*.txt)",
+    "help_fmt_yolo_body": (
+        "BBox:  <클래스명> <클래스ID> <cx> <cy> <w> <h>  (모두 0~1 정규화)\n"
+        "예)    cat 0 0.5 0.4 0.2 0.3\n"
+        "\n"
+        "Polygon:  <클래스명> <클래스ID> <x1> <y1> <x2> <y2> ...\n"
+        "예)       dog 1 0.1 0.2 0.3 0.4 0.5 0.2\n"
+        "\n"
+        "※ 기존 형식(클래스ID만 첫 번째 열)도 자동 호환됩니다."
+    ),
+
+    "help_fmt_gtmask_title": "🖼️ GT 마스크 형식 (gt_image/<클래스명>/)",
+    "help_fmt_gtmask_body": (
+        "• 바이너리 PNG 이미지 (전경=255, 배경=0)\n"
+        "• 파일 이름 = 원본 이미지의 stem (확장자 제외)\n"
+        "• 클래스별 하위 폴더에 저장  (gt_image/cat/image1.png)\n"
+        "• 항상 PNG로 저장 — JPEG 압축 노이즈 방지\n"
+        "• 불러올 때 픽셀값 ≥ 128 이면 전경으로 인식"
+    ),
+
+    "help_fmt_import_title": "📥 외부 데이터 가져오기",
+    "help_fmt_import_body": (
+        "파일 메뉴 → '외부 라벨/GT 가져오기...' 를 선택합니다.\n"
+        "\n"
+        "선택한 폴더 안에 labels/ 또는 gt_image/ 폴더가 있으면\n"
+        "현재 프로젝트 폴더로 복사됩니다.\n"
+        "\n"
+        "외부 폴더 구조 예시:\n"
+        "  외부폴더/\n"
+        "  ├── labels/\n"
+        "  │   └── image1.txt\n"
+        "  └── gt_image/\n"
+        "      └── cat/\n"
+        "          └── image1.png\n"
+        "\n"
+        "가져오기 후 현재 이미지 라벨이 자동으로 갱신됩니다."
+    ),
+
+    "help_fmt_resume_title": "🔄 이전 작업 이어하기",
+    "help_fmt_resume_body": (
+        "이미지 폴더를 열면 labels/, gt_image/ 데이터를\n"
+        "자동으로 감지하고 이미지 목록에 ✔ 표시로 알려줍니다.\n"
+        "\n"
+        "• 이미지 선택 시 라벨/마스크가 자동 로드됩니다.\n"
+        "• Segmentation 모드에서는 마스크가 브러시에 즉시 로드되어\n"
+        "  바로 수정 가능합니다.\n"
+        "• 새 클래스는 라벨 파일에서 자동 등록됩니다."
+    ),
 }

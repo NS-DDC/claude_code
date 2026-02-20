@@ -127,6 +127,22 @@ class HelpPanel(QWidget):
         for key in tips:
             content_layout.addWidget(self._tip_label(tr(key)))
 
+        content_layout.addSpacing(10)
+
+        # --- Data Formats & Import ---
+        content_layout.addWidget(self._section_title(tr("help_formats_title")))
+
+        format_items = [
+            ("help_fmt_folder_title",  "help_fmt_folder_body"),
+            ("help_fmt_yolo_title",    "help_fmt_yolo_body"),
+            ("help_fmt_gtmask_title",  "help_fmt_gtmask_body"),
+            ("help_fmt_import_title",  "help_fmt_import_body"),
+            ("help_fmt_resume_title",  "help_fmt_resume_body"),
+        ]
+        for title_key, body_key in format_items:
+            content_layout.addWidget(self._fmt_title_label(tr(title_key)))
+            content_layout.addWidget(self._fmt_body_label(tr(body_key)))
+
         content_layout.addStretch()
         scroll.setWidget(content)
         return scroll
@@ -171,6 +187,28 @@ class HelpPanel(QWidget):
         label = QLabel(f"• {text}")
         label.setWordWrap(True)
         label.setStyleSheet("color: #f0f0f0; padding: 3px 6px; font-size: 12px; background-color: #1e1e1e;")
+        return label
+
+    @staticmethod
+    def _fmt_title_label(text: str) -> QLabel:
+        label = QLabel(text)
+        label.setWordWrap(True)
+        label.setStyleSheet(
+            "color: #ffd966; font-size: 12px; font-weight: bold; "
+            "padding: 6px 6px 2px 6px; background-color: #1e1e1e;"
+        )
+        return label
+
+    @staticmethod
+    def _fmt_body_label(text: str) -> QLabel:
+        label = QLabel(text)
+        label.setWordWrap(True)
+        label.setTextFormat(Qt.TextFormat.PlainText)
+        label.setStyleSheet(
+            "color: #d0d0d0; font-size: 11px; font-family: monospace; "
+            "padding: 2px 6px 8px 12px; background-color: #252525; "
+            "border-left: 2px solid #444;"
+        )
         return label
 
     @staticmethod

@@ -16,6 +16,7 @@ from core.project_manager import ProjectManager
 from core.label_manager import LabelManager, LabelItem
 from core.model_manager import ModelManager
 from core.export_manager import ExportManager
+from core.save_manager import SaveManager
 from ui.canvas_widget import CanvasWidget
 from ui.file_list_widget import FileListWidget
 from ui.label_list_widget import LabelListWidget
@@ -32,6 +33,7 @@ class MainWindow(QMainWindow):
         self._project = ProjectManager()
         self._labels = LabelManager()
         self._model = ModelManager()
+        self._saver = SaveManager(self._labels, self._project)
         self._current_image_path = ""
 
         self._setup_ui()
@@ -296,66 +298,11 @@ class MainWindow(QMainWindow):
         if not self._project.image_dir:
             return
 
-        import cv2
-        from pathlib import Path
+        classes = self._label_list.get_classes()
+        class_names = {i: c["name"] for i, c in enumerate(classes)}
 
-        # Create folders
-        gt_image_dir = Path(self._project.image_dir) / "gt_image"
-        images_dir = Path(self._project.image_dir) / "images"
-        gt_image_dir.mkdir(parents=True, exist_ok=True)
-        images_dir.mkdir(parents=True, exist_ok=True)
+        label_count, gt_count, image_count = self._saver.save_all_images(class_names)
 
-        label_count = 0
-        gt_count = 0
-        image_count = 0
-
-        # Process each image
-        for img_path in self._project.image_list:
-            labels = self._labels.get_labels(img_path)
-            if not labels:
-                continue
-
-            # Separate bbox/polygon and mask labels
-            bbox_polygon_labels = [l for l in labels if l.label_type in ("bbox", "polygon")]
-            mask_labels = [l for l in labels if l.label_type == "mask"]
-
-            # Save YOLO txt labels for bbox/polygon
-            if bbox_polygon_labels:
-                img = cv2.imread(img_path)
-                if img is not None:
-                    h, w = img.shape[:2]
-                    label_path = self._project.get_label_path(img_path)
-                    if label_path:
-                        classes = self._label_list.get_classes()
-                        class_names = {i: c["name"] for i, c in enumerate(classes)}
-                        ExportManager.save_yolo_txt(bbox_polygon_labels, w, h, label_path, class_names)
-                        label_count += 1
-
-            # Save GT images for segmentation masks (organized by class, always PNG)
-            if mask_labels:
-                img = cv2.imread(img_path)
-                if img is not None:
-                    h, w = img.shape[:2]
-                    img_file = Path(img_path)
-
-                    # Group masks by class name, always save as PNG (lossless)
-                    for label in mask_labels:
-                        class_dir = gt_image_dir / label.class_name
-                        class_dir.mkdir(parents=True, exist_ok=True)
-                        gt_filename = img_file.stem + ".png"
-                        gt_image_path = class_dir / gt_filename
-                        # Save individual mask for this class
-                        ExportManager.save_semantic_mask([label], w, h, str(gt_image_path), multi_label=False)
-                    gt_count += 1
-
-            # Copy original image to images folder (preserve original extension)
-            img_file = Path(img_path)
-            dest_path = images_dir / img_file.name
-            if not dest_path.exists():
-                shutil.copy2(img_path, dest_path)
-                image_count += 1
-
-        # Show detailed status message
         status_parts = []
         if label_count > 0:
             status_parts.append(f"{label_count} label files")
@@ -717,36 +664,15 @@ class MainWindow(QMainWindow):
 
         current_idx = self._file_list.current_index()
 
-        # Delete label file
-        label_path = self._project.get_label_path(self._current_image_path)
-        if label_path and os.path.exists(label_path):
-            os.remove(label_path)
+        # Delete label / GT mask files via SaveManager
+        self._saver.delete_image_labels(self._current_image_path)
 
-        # Delete GT images
-        gt_image_dir = Path(self._project.image_dir) / "gt_image"
-        if gt_image_dir.exists():
-            img_file = Path(self._current_image_path)
-            # Check all class subdirectories
-            for class_dir in gt_image_dir.iterdir():
-                if class_dir.is_dir():
-                    # Check all possible extensions
-                    for ext in ['', '.png', '.jpg', '.bmp', '.tiff']:
-                        if ext:
-                            gt_file = class_dir / (img_file.stem + ext)
-                        else:
-                            gt_file = class_dir / img_file.name
-                        if gt_file.exists():
-                            gt_file.unlink()
-
-        # Delete from images folder
+        # Delete from images/ folder
         images_dir = Path(self._project.image_dir) / "images"
         if images_dir.exists():
             img_file = Path(self._current_image_path)
-            for ext in ['', '.png', '.jpg', '.bmp', '.tiff']:
-                if ext:
-                    dest_file = images_dir / (img_file.stem + ext)
-                else:
-                    dest_file = images_dir / img_file.name
+            for ext in ('', '.png', '.jpg', '.bmp', '.tiff'):
+                dest_file = images_dir / (img_file.stem + ext if ext else img_file.name)
                 if dest_file.exists():
                     dest_file.unlink()
 
@@ -933,59 +859,23 @@ class MainWindow(QMainWindow):
         if self._labels.get_labels(image_path):
             return  # Already loaded
 
-        w, h = self._canvas.get_image_size()
-        if w == 0 or h == 0:
-            return
-
         classes = self._label_list.get_classes()
         class_names = {i: c["name"] for i, c in enumerate(classes)}
 
-        all_labels = []
+        def _register_class(name: str) -> int:
+            idx = self._label_list.add_class(name)
+            return idx
 
-        # Load YOLO txt labels
-        label_path = self._project.get_label_path(image_path)
-        if label_path and os.path.isfile(label_path):
-            labels = ExportManager.load_yolo_txt(label_path, w, h, class_names)
-            if labels:
-                # Auto-register any new classes found in labels
-                for label in labels:
-                    existing_classes = [c["name"] for c in classes]
-                    if label.class_name not in existing_classes:
-                        self._label_list.add_class(label.class_name)
-                        classes = self._label_list.get_classes()
-                        class_names = {i: c["name"] for i, c in enumerate(classes)}
-                        # Update class_id based on newly registered class
-                        for i, c in enumerate(classes):
-                            if c["name"] == label.class_name:
-                                label.class_id = i
-                                break
-                    label.color = self._label_list.get_class_color(label.class_id)
-                all_labels.extend(labels)
+        all_labels = self._saver.load_labels_from_disk(
+            image_path,
+            self._canvas.get_image_size(),
+            class_names,
+            _register_class,
+        )
 
-        # Load GT masks from gt_image/ directory
-        from pathlib import Path
-        if self._project.image_dir:
-            gt_image_dir = Path(self._project.image_dir) / "gt_image"
-            if gt_image_dir.exists():
-                # First, auto-register any classes found in gt_image/ subdirectories
-                for class_dir in gt_image_dir.iterdir():
-                    if class_dir.is_dir():
-                        class_name = class_dir.name
-                        # Check if class already exists
-                        existing_classes = [c["name"] for c in classes]
-                        if class_name not in existing_classes:
-                            # Auto-add this class
-                            self._label_list.add_class(class_name)
-                            classes = self._label_list.get_classes()
-                            class_names = {i: c["name"] for i, c in enumerate(classes)}
-
-                gt_labels = ExportManager.load_gt_masks(
-                    str(gt_image_dir), image_path, w, h, class_names
-                )
-                if gt_labels:
-                    for label in gt_labels:
-                        label.color = self._label_list.get_class_color(label.class_id)
-                    all_labels.extend(gt_labels)
+        # Assign display colours from the (now up-to-date) class list
+        for label in all_labels:
+            label.color = self._label_list.get_class_color(label.class_id)
 
         if all_labels:
             self._labels.set_labels(image_path, all_labels)
@@ -996,82 +886,22 @@ class MainWindow(QMainWindow):
             return
 
         labels = self._labels.get_labels(self._current_image_path)
-        w, h = self._canvas.get_image_size()
-        if w == 0 or h == 0:
-            return
 
-        from pathlib import Path
-
-        # If no labels, delete existing txt file and GT images
+        # No labels → delete any stale files
         if not labels:
-            label_path = self._project.get_label_path(self._current_image_path)
-            if label_path and os.path.exists(label_path):
-                os.remove(label_path)
-
-            # Remove GT images for this image
-            gt_image_dir = Path(self._project.image_dir) / "gt_image"
-            if gt_image_dir.exists():
-                img_file = Path(self._current_image_path)
-                # Check all class subdirectories
-                for class_dir in gt_image_dir.iterdir():
-                    if class_dir.is_dir():
-                        gt_file = class_dir / img_file.name
-                        if gt_file.exists():
-                            gt_file.unlink()
+            self._saver.delete_image_labels(self._current_image_path)
             return
 
-        # Separate bbox/polygon labels and mask labels
-        bbox_polygon_labels = [l for l in labels if l.label_type in ("bbox", "polygon")]
-        mask_labels = [l for l in labels if l.label_type == "mask"]
+        classes = self._label_list.get_classes()
+        class_names = {i: c["name"] for i, c in enumerate(classes)}
+        w, h = self._canvas.get_image_size()
 
-        saved_items = []
+        saved_items = self._saver.save_image_labels(
+            self._current_image_path, class_names, (w, h)
+        )
 
-        # Save YOLO txt labels for bbox/polygon
-        if bbox_polygon_labels:
-            label_path = self._project.get_label_path(self._current_image_path)
-            if label_path:
-                classes = self._label_list.get_classes()
-                class_names = {i: c["name"] for i, c in enumerate(classes)}
-                ExportManager.save_yolo_txt(bbox_polygon_labels, w, h, label_path, class_names)
-                saved_items.append(f"{len(bbox_polygon_labels)} labels")
-        else:
-            # No bbox/polygon labels, delete txt file if exists
-            label_path = self._project.get_label_path(self._current_image_path)
-            if label_path and os.path.exists(label_path):
-                os.remove(label_path)
-
-        # Save GT image for segmentation masks (organized by class)
-        if mask_labels:
-            gt_image_dir = Path(self._project.image_dir) / "gt_image"
-            gt_image_dir.mkdir(parents=True, exist_ok=True)
-
-            img_file = Path(self._current_image_path)
-
-            # Save each mask in its class-specific folder
-            # GT masks are always saved as PNG to avoid lossy compression artifacts
-            for label in mask_labels:
-                class_dir = gt_image_dir / label.class_name
-                class_dir.mkdir(parents=True, exist_ok=True)
-                gt_filename = img_file.stem + ".png"
-                gt_image_path = class_dir / gt_filename
-                # Save individual mask for this class
-                ExportManager.save_semantic_mask([label], w, h, str(gt_image_path), multi_label=False)
-            saved_items.append(f"GT images ({len(mask_labels)} classes)")
-
-        # Copy original image to images folder if any labels exist (preserve original extension)
-        if labels:
-            images_dir = Path(self._project.image_dir) / "images"
-            images_dir.mkdir(parents=True, exist_ok=True)
-
-            img_file = Path(self._current_image_path)
-            dest_path = images_dir / img_file.name
-            # Copy only if not already in images folder
-            if not dest_path.exists():
-                shutil.copy2(self._current_image_path, dest_path)
-                saved_items.append("image")
-
-        # Show status message
         if saved_items:
+            from pathlib import Path
             img_name = Path(self._current_image_path).name
             self._status_bar.showMessage(f"Saved {img_name}: {', '.join(saved_items)}", 2000)
 

@@ -262,4 +262,75 @@ EN = {
     # Export mask format
     "export_mask_format_title": "Mask Format Selection",
     "export_mask_format_message": "Export as multi-label semantic mask?\nYes: Pixel value = Class ID + 1 (semantic segmentation)\nNo: Binary mask (foreground=255, background=0)",
+
+    # Help – Data formats section
+    "help_formats_title": "Data Formats & Import",
+
+    "help_fmt_folder_title": "📁 Folder Structure",
+    "help_fmt_folder_body": (
+        "When you open an image folder, the following layout is auto-detected:\n"
+        "\n"
+        "  <image_folder>/\n"
+        "  ├── image1.jpg       ← source images\n"
+        "  ├── image2.png\n"
+        "  ├── labels/          ← BBox/Polygon YOLO labels\n"
+        "  │   ├── image1.txt\n"
+        "  │   └── image2.txt\n"
+        "  ├── gt_image/        ← Segmentation GT masks\n"
+        "  │   ├── classA/\n"
+        "  │   │   ├── image1.png\n"
+        "  │   │   └── image2.png\n"
+        "  │   └── classB/\n"
+        "  │       └── image1.png\n"
+        "  └── images/          ← images copied on save"
+    ),
+
+    "help_fmt_yolo_title": "📄 YOLO Label Format (labels/*.txt)",
+    "help_fmt_yolo_body": (
+        "BBox:     <class_name> <class_id> <cx> <cy> <w> <h>  (all 0-1 normalised)\n"
+        "Example:  cat 0 0.5 0.4 0.2 0.3\n"
+        "\n"
+        "Polygon:  <class_name> <class_id> <x1> <y1> <x2> <y2> ...\n"
+        "Example:  dog 1 0.1 0.2 0.3 0.4 0.5 0.2\n"
+        "\n"
+        "Note: legacy format (class_id only as first column) is also supported."
+    ),
+
+    "help_fmt_gtmask_title": "🖼️ GT Mask Format (gt_image/<class_name>/)",
+    "help_fmt_gtmask_body": (
+        "• Binary PNG image (foreground=255, background=0)\n"
+        "• File stem must match the source image (extension excluded)\n"
+        "• Stored per class in gt_image/cat/image1.png\n"
+        "• Always saved as PNG — prevents JPEG compression noise\n"
+        "• On load, pixels ≥ 128 are treated as foreground"
+    ),
+
+    "help_fmt_import_title": "📥 Importing External Data",
+    "help_fmt_import_body": (
+        "Go to File → 'Import External Labels/GT...' and select a folder.\n"
+        "\n"
+        "If the folder contains a labels/ or gt_image/ subfolder,\n"
+        "those files are copied into the current project folder.\n"
+        "\n"
+        "Expected external folder structure:\n"
+        "  external_folder/\n"
+        "  ├── labels/\n"
+        "  │   └── image1.txt\n"
+        "  └── gt_image/\n"
+        "      └── cat/\n"
+        "          └── image1.png\n"
+        "\n"
+        "Labels are refreshed automatically after import."
+    ),
+
+    "help_fmt_resume_title": "🔄 Resuming Previous Work",
+    "help_fmt_resume_body": (
+        "Opening an image folder auto-detects labels/ and gt_image/ data.\n"
+        "Images with existing labels show a ✔ indicator in the file list.\n"
+        "\n"
+        "• Labels and masks load automatically when you select an image.\n"
+        "• In Segmentation mode, the mask is loaded into the brush immediately\n"
+        "  so you can start editing right away.\n"
+        "• New classes found in label files are registered automatically."
+    ),
 }
