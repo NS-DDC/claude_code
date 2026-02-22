@@ -29,26 +29,24 @@ class ExportManager:
         image_width: int,
         image_height: int,
         output_path: str,
+        class_names: dict[int, str] | None = None,
     ) -> None:
-        """Save labels in YOLO annotation format.
+        """Save labels in YOLO annotation format with class name prefix.
 
-        For **bbox** labels the line format is::
+        Line format::
 
-            <class_id> <cx> <cy> <w> <h>
+            <class_name> <class_id> <cx> <cy> <w> <h>
 
-        where all values are normalized to [0, 1].
+        or for polygon/mask::
 
-        For **polygon** and **mask** labels the line format is::
-
-            <class_id> <x1> <y1> <x2> <y2> ... <xn> <yn>
-
-        where all coordinates are normalized. Masks are converted to polygons.
+            <class_name> <class_id> <x1> <y1> <x2> <y2> ... <xn> <yn>
 
         Args:
             labels: List of ``LabelItem`` instances.
             image_width: Width of the source image in pixels.
             image_height: Height of the source image in pixels.
             output_path: Destination ``.txt`` file path.
+            class_names: Optional mapping of class id to class name.
         """
         if image_width <= 0 or image_height <= 0:
             logger.error("Invalid image dimensions: %dx%d", image_width, image_height)
@@ -87,7 +85,7 @@ class ExportManager:
     def _bbox_to_yolo_line(
         label: LabelItem, img_w: int, img_h: int
     ) -> str:
-        """Convert a bbox LabelItem to a YOLO detection line."""
+        """Convert a bbox LabelItem to a YOLO detection line with class name."""
         xs = [p[0] for p in label.points]
         ys = [p[1] for p in label.points]
         x_min, x_max = min(xs), max(xs)
@@ -98,18 +96,18 @@ class ExportManager:
         w = (x_max - x_min) / img_w
         h = (y_max - y_min) / img_h
 
-        return f"{label.class_id} {cx:.6f} {cy:.6f} {w:.6f} {h:.6f}"
+        return f"{label.class_name} {label.class_id} {cx:.6f} {cy:.6f} {w:.6f} {h:.6f}"
 
     @staticmethod
     def _polygon_to_yolo_line(
         label: LabelItem, img_w: int, img_h: int
     ) -> str:
-        """Convert a polygon LabelItem to a YOLO segmentation line."""
+        """Convert a polygon LabelItem to a YOLO segmentation line with class name."""
         coords: list[str] = []
         for x, y in label.points:
             coords.append(f"{x / img_w:.6f}")
             coords.append(f"{y / img_h:.6f}")
-        return f"{label.class_id} " + " ".join(coords)
+        return f"{label.class_name} {label.class_id} " + " ".join(coords)
 
     @staticmethod
     def _mask_to_yolo_line(
@@ -144,7 +142,7 @@ class ExportManager:
         if len(coords) < 6:  # At least 3 points
             return ""
 
-        return f"{label.class_id} " + " ".join(coords)
+        return f"{label.class_name} {label.class_id} " + " ".join(coords)
 
     # ------------------------------------------------------------------
     # YOLO TXT – load
@@ -158,6 +156,9 @@ class ExportManager:
         class_names: dict[int, str],
     ) -> list[LabelItem]:
         """Load labels from a YOLO-format ``.txt`` annotation file.
+
+        Supports both old format (class_id first) and new format
+        (class_name class_id first) for backward compatibility.
 
         Args:
             txt_path: Path to the annotation file.
@@ -182,8 +183,18 @@ class ExportManager:
                 if len(parts) < 5:
                     continue
 
-                class_id = int(parts[0])
-                values = [float(v) for v in parts[1:]]
+                # Detect format: new format has class_name as first token (non-numeric)
+                try:
+                    float(parts[0])
+                    # Old format: class_id first
+                    class_id = int(parts[0])
+                    cls_name = class_names.get(class_id, str(class_id))
+                    values = [float(v) for v in parts[1:]]
+                except ValueError:
+                    # New format: class_name class_id ...
+                    cls_name = parts[0]
+                    class_id = int(parts[1])
+                    values = [float(v) for v in parts[2:]]
 
                 if len(values) == 4:
                     # bbox: cx cy w h (normalized)
@@ -208,7 +219,6 @@ class ExportManager:
                         points.append((px, py))
                     label_type = "polygon"
 
-                cls_name = class_names.get(class_id, str(class_id))
                 labels.append(
                     LabelItem(
                         class_id=class_id,
@@ -218,6 +228,80 @@ class ExportManager:
                         color=_color_for_class(class_id),
                     )
                 )
+
+        return labels
+
+    # ------------------------------------------------------------------
+    # GT mask loading
+    # ------------------------------------------------------------------
+
+    @staticmethod
+    def load_gt_masks(
+        gt_image_dir: str,
+        image_path: str,
+        image_width: int,
+        image_height: int,
+        class_names: dict[int, str],
+    ) -> list[LabelItem]:
+        """Load GT masks from gt_image/<class_name>/ directory structure.
+
+        Args:
+            gt_image_dir: Path to the gt_image/ directory.
+            image_path: Path to the source image (used for matching filename).
+            image_width: Image width in pixels.
+            image_height: Image height in pixels.
+            class_names: Mapping of class id to class name.
+
+        Returns:
+            List of ``LabelItem`` instances with mask_data loaded.
+        """
+        gt_dir = Path(gt_image_dir)
+        if not gt_dir.exists():
+            return []
+
+        img_stem = Path(image_path).stem
+        labels: list[LabelItem] = []
+
+        # Reverse map: class_name -> class_id
+        name_to_id = {name: cid for cid, name in class_names.items()}
+
+        for class_dir in gt_dir.iterdir():
+            if not class_dir.is_dir():
+                continue
+
+            class_name = class_dir.name
+            class_id = name_to_id.get(class_name, -1)
+
+            # Try to find matching mask file (any extension)
+            for mask_file in class_dir.iterdir():
+                if mask_file.is_file() and mask_file.stem == img_stem:
+                    # Load mask
+                    mask = cv2.imread(str(mask_file), cv2.IMREAD_GRAYSCALE)
+                    if mask is None:
+                        continue
+
+                    # Resize if needed (always use INTER_NEAREST to avoid interpolation artifacts)
+                    if mask.shape != (image_height, image_width):
+                        mask = cv2.resize(mask, (image_width, image_height),
+                                         interpolation=cv2.INTER_NEAREST)
+
+                    # Threshold to binary with high threshold (128) to reject JPEG compression noise
+                    mask = (mask >= 128).astype(np.uint8) * 255
+
+                    if mask.max() == 0:
+                        continue
+
+                    labels.append(
+                        LabelItem(
+                            class_id=class_id if class_id >= 0 else 0,
+                            class_name=class_name,
+                            label_type="mask",
+                            points=[],
+                            color=_color_for_class(class_id if class_id >= 0 else 0),
+                            mask_data=mask,
+                        )
+                    )
+                    break  # Only one mask per class per image
 
         return labels
 
@@ -232,17 +316,7 @@ class ExportManager:
         image_height: int,
         output_path: str,
     ) -> None:
-        """Render all labels as a single-channel binary mask and save as PNG.
-
-        All foreground regions (both bboxes and polygons) are drawn as white
-        (255) on a black (0) background.
-
-        Args:
-            labels: Labels to render.
-            image_width: Width of the output mask.
-            image_height: Height of the output mask.
-            output_path: Destination PNG file path.
-        """
+        """Render all labels as a single-channel binary mask and save as PNG."""
         mask = np.zeros((image_height, image_width), dtype=np.uint8)
 
         for label in labels:
@@ -270,16 +344,7 @@ class ExportManager:
         output_path: str,
         multi_label: bool = True,
     ) -> None:
-        """Save segmentation mask as PNG with semantic class encoding.
-
-        Args:
-            labels: Labels to render.
-            image_width: Width of the output mask.
-            image_height: Height of the output mask.
-            output_path: Destination PNG file path.
-            multi_label: If True, pixel value = class_id + 1 (0 reserved for background).
-                        If False, binary mask (0=background, 255=foreground).
-        """
+        """Save segmentation mask as PNG with semantic class encoding."""
         mask = np.zeros((image_height, image_width), dtype=np.uint8)
 
         for label in labels:
@@ -315,17 +380,7 @@ class ExportManager:
         label_manager: LabelManager,
         project_manager: ProjectManager,
     ) -> int:
-        """Save labels for every image that has annotations.
-
-        Labels are written in YOLO format to the project's label directory.
-
-        Args:
-            label_manager: Source of annotation data.
-            project_manager: Provides image list and label paths.
-
-        Returns:
-            Number of label files written.
-        """
+        """Save labels for every image that has annotations."""
         count = 0
         for image_path in project_manager.image_list:
             labels = label_manager.get_labels(image_path)

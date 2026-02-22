@@ -102,9 +102,21 @@ class ProjectManager(QObject):
         return str(self._label_dir / (img.stem + ".txt"))
 
     def has_labels(self, image_path: str) -> bool:
-        """Return ``True`` if a label file already exists for the image."""
+        """Return ``True`` if a label txt file or GT mask image exists for the image."""
         label_path = self.get_label_path(image_path)
-        return os.path.isfile(label_path)
+        if os.path.isfile(label_path):
+            return True
+        # Also check gt_image/<class>/<stem>.* directories
+        if self._image_dir is not None:
+            gt_dir = self._image_dir / "gt_image"
+            if gt_dir.is_dir():
+                img_stem = Path(image_path).stem
+                for class_dir in gt_dir.iterdir():
+                    if class_dir.is_dir():
+                        for f in class_dir.iterdir():
+                            if f.is_file() and f.stem == img_stem:
+                                return True
+        return False
 
     def get_image_index(self, image_path: str) -> int:
         """Return the index of *image_path* in the image list, or -1."""

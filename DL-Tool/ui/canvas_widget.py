@@ -37,6 +37,8 @@ class CanvasWidget(QWidget):
     cursor_moved = Signal(int, int)  # x, y in image coords
     zoom_changed = Signal(float)
     skip_image_requested = Signal()  # X key pressed to skip
+    brush_size_changed_from_canvas = Signal(int)  # +/- key or Ctrl+wheel changed brush size
+    edit_mask_requested = Signal(int)  # request to edit mask at index
 
     def __init__(self, parent: QWidget = None):
         super().__init__(parent)
@@ -194,7 +196,7 @@ class CanvasWidget(QWidget):
 
     def set_brush_size(self, size: int):
         """Update brush size."""
-        self._brush_size = size
+        self._brush_size = max(5, min(200, size))
         if self._brush_cursor:
             self._update_brush_cursor_size()
 
@@ -215,6 +217,19 @@ class CanvasWidget(QWidget):
     def set_bbox_mode(self, mode: str):
         """Set BBox drawing mode (rectangle or polygon)."""
         self._bbox_mode = mode
+
+    def load_mask_for_editing(self, mask_data: np.ndarray, color: str):
+        """Load an existing mask into the canvas for editing."""
+        if self._image_pixmap is None:
+            return
+        w, h = self._image_pixmap.width(), self._image_pixmap.height()
+        # Resize mask if needed
+        if mask_data.shape != (h, w):
+            mask_data = cv2.resize(mask_data, (w, h), interpolation=cv2.INTER_NEAREST)
+        self._current_mask = mask_data
+        self._current_mask_color = color
+        self._update_mask_display()
+        self._show_brush_cursor()
 
     def finish_current_shape(self):
         """Finish drawing current polygon or mask."""
@@ -772,8 +787,6 @@ class CanvasWidget(QWidget):
                 self._erasing = False
             # Create undo command for brush stroke
             if self._brush_snapshot is not None and self._current_mask is not None:
-                # Emit brush stroke completed signal (will be handled by main window)
-                # For now, just clear snapshot
                 self._brush_snapshot = None
             return
 
@@ -825,6 +838,18 @@ class CanvasWidget(QWidget):
         # Segmentation mode polygon (Ctrl+Click mode)
         if self._mode == ToolMode.SEGMENTATION and len(self._polygon_points) >= 3:
             self._finalize_polygon()
+            return
+
+        # SELECT mode: double-click on mask label to edit it
+        if self._mode == ToolMode.SELECT:
+            scene_pos = self._scene_pos(pos)
+            if scene_pos:
+                items_at = self._scene.items(scene_pos)
+                for item in items_at:
+                    for i, li in enumerate(self._label_items):
+                        if li.graphics_item is item and li.label.label_type == "mask":
+                            self.edit_mask_requested.emit(i)
+                            return
 
     def _finalize_polygon(self):
         """Finalize and emit polygon label."""
@@ -879,35 +904,29 @@ class CanvasWidget(QWidget):
         self.label_created.emit(label)
 
     def _on_wheel_zoom(self, delta: int, modifiers=None):
-        """Handle wheel zoom or brush size change with Ctrl."""
+        """Handle wheel event.
+        - SEGMENTATION mode: Ctrl+Wheel = zoom, plain Wheel = brush size change
+        - Other modes: plain Wheel = zoom
+        """
         from PySide6.QtWidgets import QApplication
         if modifiers is None:
             modifiers = QApplication.keyboardModifiers()
 
-        # Ctrl + Wheel = Brush size change
-        if modifiers & Qt.KeyboardModifier.ControlModifier:
-            if self._mode == ToolMode.SEGMENTATION:
-                change = 5 if delta > 0 else -5
-                new_size = max(5, min(100, self._brush_size + change))
-                self.set_brush_size(new_size)
-                # Emit signal to update toolbar
-                from ui.main_window import MainWindow
-                # Find parent main window and update slider
-                parent = self.parent()
-                while parent and not isinstance(parent, QWidget):
-                    parent = parent.parent()
-                if parent:
-                    # Update slider value through main window
-                    pass  # Will be handled by signal connection
-            return
+        ctrl_held = bool(modifiers & Qt.KeyboardModifier.ControlModifier)
 
-        # Normal zoom
-        factor = 1.15 if delta > 0 else 1 / 1.15
-        self._view.scale(factor, factor)
-        # Calculate zoom level
-        transform = self._view.transform()
-        zoom = transform.m11() * 100
-        self.zoom_changed.emit(zoom)
+        if self._mode == ToolMode.SEGMENTATION and not ctrl_held:
+            # Plain wheel in segmentation mode -> adjust brush size
+            step = 5 if delta > 0 else -5
+            new_size = max(5, min(200, self._brush_size + step))
+            self.set_brush_size(new_size)
+            self.brush_size_changed_from_canvas.emit(new_size)
+        else:
+            # Ctrl+Wheel (or any wheel outside segmentation mode) -> zoom
+            factor = 1.15 if delta > 0 else 1 / 1.15
+            self._view.scale(factor, factor)
+            transform = self._view.transform()
+            zoom = transform.m11() * 100
+            self.zoom_changed.emit(zoom)
 
     def _on_key_press(self, event: QKeyEvent):
         """Handle keyboard shortcuts."""
@@ -934,6 +953,36 @@ class CanvasWidget(QWidget):
         elif event.key() == Qt.Key.Key_X:
             # Skip to next image without saving
             self.skip_image_requested.emit()
+        elif event.key() == Qt.Key.Key_Plus or event.key() == Qt.Key.Key_Equal:
+            # Check for Ctrl modifier -> zoom in
+            from PySide6.QtWidgets import QApplication
+            modifiers = QApplication.keyboardModifiers()
+            if modifiers & Qt.KeyboardModifier.ControlModifier:
+                # Ctrl+ = zoom in
+                self._view.scale(1.15, 1.15)
+                transform = self._view.transform()
+                self.zoom_changed.emit(transform.m11() * 100)
+            else:
+                # + = increase brush size
+                if self._mode == ToolMode.SEGMENTATION:
+                    new_size = min(200, self._brush_size + 5)
+                    self.set_brush_size(new_size)
+                    self.brush_size_changed_from_canvas.emit(new_size)
+        elif event.key() == Qt.Key.Key_Minus:
+            # Check for Ctrl modifier -> zoom out
+            from PySide6.QtWidgets import QApplication
+            modifiers = QApplication.keyboardModifiers()
+            if modifiers & Qt.KeyboardModifier.ControlModifier:
+                # Ctrl- = zoom out
+                self._view.scale(1 / 1.15, 1 / 1.15)
+                transform = self._view.transform()
+                self.zoom_changed.emit(transform.m11() * 100)
+            else:
+                # - = decrease brush size
+                if self._mode == ToolMode.SEGMENTATION:
+                    new_size = max(5, self._brush_size - 5)
+                    self.set_brush_size(new_size)
+                    self.brush_size_changed_from_canvas.emit(new_size)
 
     def retranslate(self):
         self._placeholder.setText(tr("canvas_no_image"))

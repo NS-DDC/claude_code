@@ -11,6 +11,7 @@ from i18n import tr
 class HelpPanel(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
+        self._scroll = None
         self._setup_ui()
 
     def _setup_ui(self):
@@ -18,7 +19,10 @@ class HelpPanel(QWidget):
         layout.setSpacing(0)
         layout.setContentsMargins(0, 0, 0, 0)
 
-        # Scroll area for content
+        self._scroll = self._build_scroll_content()
+        layout.addWidget(self._scroll)
+
+    def _build_scroll_content(self) -> QScrollArea:
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
         scroll.setFrameShape(QFrame.Shape.NoFrame)
@@ -76,6 +80,11 @@ class HelpPanel(QWidget):
             "help_shortcut_select",
             "help_shortcut_bbox",
             "help_shortcut_segmentation",
+            "",
+            "help_shortcut_brush_plus",
+            "help_shortcut_brush_minus",
+            "help_shortcut_zoom_in",
+            "help_shortcut_zoom_out",
         ]
         for key in shortcuts:
             if key == "":
@@ -110,17 +119,38 @@ class HelpPanel(QWidget):
             "help_tip_save_extension",
             "help_tip_recent_folders",
             "help_tip_exclude",
+            "help_tip_mask_edit",
+            "help_tip_import_labels",
+            "help_tip_label_format",
+            "help_tip_resume_work",
         ]
         for key in tips:
             content_layout.addWidget(self._tip_label(tr(key)))
 
+        content_layout.addSpacing(10)
+
+        # --- Data Formats & Import ---
+        content_layout.addWidget(self._section_title(tr("help_formats_title")))
+
+        format_items = [
+            ("help_fmt_folder_title",  "help_fmt_folder_body"),
+            ("help_fmt_yolo_title",    "help_fmt_yolo_body"),
+            ("help_fmt_gtmask_title",  "help_fmt_gtmask_body"),
+            ("help_fmt_import_title",  "help_fmt_import_body"),
+            ("help_fmt_resume_title",  "help_fmt_resume_body"),
+        ]
+        for title_key, body_key in format_items:
+            content_layout.addWidget(self._fmt_title_label(tr(title_key)))
+            content_layout.addWidget(self._fmt_body_label(tr(body_key)))
+
         content_layout.addStretch()
         scroll.setWidget(content)
-        layout.addWidget(scroll)
+        return scroll
 
     @staticmethod
     def _section_title(text: str) -> QLabel:
         label = QLabel(text)
+        label.setWordWrap(True)
         label.setStyleSheet(
             "font-size: 14px; font-weight: bold; color: #5eb3f6; "
             "padding: 4px 0; border-bottom: 2px solid #5eb3f6;"
@@ -160,6 +190,28 @@ class HelpPanel(QWidget):
         return label
 
     @staticmethod
+    def _fmt_title_label(text: str) -> QLabel:
+        label = QLabel(text)
+        label.setWordWrap(True)
+        label.setStyleSheet(
+            "color: #ffd966; font-size: 12px; font-weight: bold; "
+            "padding: 6px 6px 2px 6px; background-color: #1e1e1e;"
+        )
+        return label
+
+    @staticmethod
+    def _fmt_body_label(text: str) -> QLabel:
+        label = QLabel(text)
+        label.setWordWrap(True)
+        label.setTextFormat(Qt.TextFormat.PlainText)
+        label.setStyleSheet(
+            "color: #d0d0d0; font-size: 11px; font-family: monospace; "
+            "padding: 2px 6px 8px 12px; background-color: #252525; "
+            "border-left: 2px solid #444;"
+        )
+        return label
+
+    @staticmethod
     def _separator() -> QFrame:
         line = QFrame()
         line.setFrameShape(QFrame.Shape.HLine)
@@ -167,13 +219,12 @@ class HelpPanel(QWidget):
         return line
 
     def retranslate(self):
-        """Re-create UI with updated translations."""
-        # Clear all child widgets
+        """Re-create content with updated translations without recreating layout."""
         layout = self.layout()
-        if layout:
-            while layout.count():
-                item = layout.takeAt(0)
-                if item.widget():
-                    item.widget().deleteLater()
-        # Rebuild UI
-        self._setup_ui()
+        if layout and self._scroll:
+            # Remove old scroll area
+            layout.removeWidget(self._scroll)
+            self._scroll.deleteLater()
+            # Build new content
+            self._scroll = self._build_scroll_content()
+            layout.addWidget(self._scroll)
