@@ -19,19 +19,24 @@ import kotlin.coroutines.coroutineContext
 /**
  * MediaStore 쿼리 — 삭제된 파일만 검색
  *
- * [삭제 파일 탐지 전략 — 이중 검증]
+ * [삭제 파일 탐지 전략 — 3단계 검증]
  *
  * ┌─────────────────────────────────────────────────────────┐
- * │ Android 11+ (API 30)                                    │
- * │ 1차: MATCH_INCLUDE + IS_TRASHED 코드 필터               │
- * │ 2차: MATCH_ONLY 추가 쿼리 (일부 OEM 대응)               │
- * │ → 두 결과 합산, ID 기반 중복 제거                        │
+ * │ 전략 1: IS_TRASHED (Android 11+ only)                   │
+ * │ - MATCH_INCLUDE + IS_TRASHED=1 코드 필터                │
+ * │ - 갤러리/앱에서 '삭제'한 파일 (휴지통 경유)              │
+ * │ - 삼성 갤러리, Google Files 등 표준 삭제                 │
  * └─────────────────────────────────────────────────────────┘
  * ┌─────────────────────────────────────────────────────────┐
- * │ Android 10 이하                                         │
- * │ 1차: DATA 컬럼으로 파일 경로 획득                        │
- * │ 2차: File.exists() 로 실제 파일 존재 여부 확인           │
- * │ → DB 레코드 O + 실제 파일 X = 삭제된 파일               │
+ * │ 전략 2: MATCH_ONLY (Android 11+ only)                   │
+ * │ - 일부 OEM에서 IS_TRASHED 없이 MATCH_ONLY만 지원        │
+ * │ - 통화 녹음, MIUI 파일 관리자 등                        │
+ * └─────────────────────────────────────────────────────────┘
+ * ┌─────────────────────────────────────────────────────────┐
+ * │ 전략 3: Orphaned File (모든 Android 버전)               │
+ * │ - DATA 컬럼으로 파일 경로 확인                          │
+ * │ - DB 레코드 O + 실제 파일 X = 삭제된 파일               │
+ * │ - PC USB 연결 삭제, 파일 매니저 직접 삭제 등 커버        │
  * └─────────────────────────────────────────────────────────┘
  */
 class MediaStoreDataSource(private val context: Context) {
@@ -39,7 +44,6 @@ class MediaStoreDataSource(private val context: Context) {
     companion object {
         private const val TAG = "MediaStoreScan"
 
-        // 기타(OTHER) 스캔 시 제외할 MIME 접두사 (이미 다른 스캔 함수에서 처리)
         private val EXCLUDE_MIME_PREFIXES = listOf("image/", "video/", "audio/")
         private val EXCLUDE_MIME_EXACT = setOf(
             "application/pdf",
@@ -91,36 +95,66 @@ class MediaStoreDataSource(private val context: Context) {
         )
     }
 
-    /**
-     * 기타 파일 스캔 — APK, RAR, 7z, DB, JSON 등 미디어/문서 아닌 모든 삭제 파일
-     * MediaStore.Files 전체를 쿼리하되 이미 다른 카테고리로 처리한 MIME 타입 제외
-     */
     suspend fun scanOthers(): List<RecoverableFile> = withContext(Dispatchers.IO) {
+        val results = mutableListOf<RecoverableFile>()
+        val seenUris = mutableSetOf<String>()
+
+        // 전략 1+2: IS_TRASHED / MATCH_ONLY (Android 11+)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-            queryOthersTrashed()
-        } else {
-            queryOthersOrphaned()
+            queryOthersTrashed().forEach { file ->
+                val key = file.uri?.toString() ?: return@forEach
+                if (seenUris.add(key)) results += file
+            }
         }
+
+        // 전략 3: Orphaned file check (PC 삭제 등) — 모든 버전
+        queryOthersOrphaned().forEach { file ->
+            val key = file.uri?.toString() ?: file.path
+            if (key.isNotEmpty() && seenUris.add(key)) results += file
+        }
+
+        Log.d(TAG, "OTHER total: ${results.size}개")
+        results
     }
 
+    /**
+     * 삭제된 파일 통합 쿼리 — 3가지 전략 병합
+     *
+     * Android 11+: IS_TRASHED + MATCH_ONLY + Orphaned 3가지 전략 합산
+     * Android 10-: Orphaned (DATA + File.exists()) 만 사용
+     *
+     * PC USB 연결 후 삭제한 파일은 IS_TRASHED가 설정되지 않고
+     * MediaStore에 orphaned record로만 남기 때문에 Orphaned check 필수
+     */
     private suspend fun queryDeletedFiles(
         externalUri: Uri,
         category: FileCategory,
         mimeTypes: List<String>? = null
     ): List<RecoverableFile> {
-        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-            queryTrashedFiles(externalUri, category, mimeTypes)
-        } else {
-            queryOrphanedFiles(externalUri, category, mimeTypes)
+        val results = mutableListOf<RecoverableFile>()
+        val seenUris = mutableSetOf<String>()
+
+        // 전략 1+2: IS_TRASHED / MATCH_ONLY (Android 11+)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            queryTrashedFiles(externalUri, category, mimeTypes).forEach { file ->
+                val key = file.uri?.toString() ?: return@forEach
+                if (seenUris.add(key)) results += file
+            }
         }
+
+        // 전략 3: Orphaned file check — DB 레코드 O + 실제 파일 X
+        // PC에서 USB 삭제, 파일 매니저 직접 삭제, 앱 데이터 정리 등 커버
+        queryOrphanedFiles(externalUri, category, mimeTypes).forEach { file ->
+            val key = file.uri?.toString() ?: file.path
+            if (key.isNotEmpty() && seenUris.add(key)) results += file
+        }
+
+        Log.d(TAG, "${category.name} deleted total: ${results.size}개 (trashed+orphaned)")
+        return results
     }
 
     /**
-     * Android 11+ — MATCH_INCLUDE + IS_TRASHED 필터 (주 전략)
-     *                + MATCH_ONLY 추가 쿼리 (OEM 보완)
-     *
-     * 통화 녹음 앱 등 일부 OEM에서 IS_TRASHED 컬럼을 쓰지 않고
-     * MATCH_ONLY로만 삭제 파일을 노출하는 경우 커버
+     * Android 11+ — IS_TRASHED 기반 삭제 파일 탐지
      */
     private suspend fun queryTrashedFiles(
         externalUri: Uri,
@@ -140,15 +174,15 @@ class MediaStoreDataSource(private val context: Context) {
             seenIds = seenIds
         )
 
-        // 전략 2: MATCH_ONLY (일부 삼성/MIUI 등 OEM 대응)
+        // 전략 2: MATCH_ONLY (일부 OEM 대응)
         results += queryWithMatchMode(
             externalUri, category, mimeTypes,
             matchMode = MediaStore.MATCH_ONLY,
-            requireIsTrashed = false,  // MATCH_ONLY 자체가 삭제 파일만 반환
+            requireIsTrashed = false,
             seenIds = seenIds
         )
 
-        Log.d(TAG, "${category.name} trashed total: ${results.size}개")
+        Log.d(TAG, "${category.name} trashed: ${results.size}개")
         return results
     }
 
@@ -212,7 +246,7 @@ class MediaStoreDataSource(private val context: Context) {
                     coroutineContext.ensureActive()
 
                     val id = cursor.getLong(idCol)
-                    if (!seenIds.add(id)) continue  // 중복 제거
+                    if (!seenIds.add(id)) continue
 
                     if (requireIsTrashed) {
                         val isTrashed = if (trashedCol >= 0) cursor.getInt(trashedCol) else 0
@@ -247,7 +281,16 @@ class MediaStoreDataSource(private val context: Context) {
     }
 
     /**
-     * Android 10 이하 — DATA 컬럼 + File.exists() 로 삭제 여부 판단
+     * Orphaned file check — DB 레코드는 있지만 실제 파일은 없는 경우
+     *
+     * [이 전략이 커버하는 삭제 시나리오]
+     * 1. PC USB 연결 후 파일 탐색기에서 삭제 (MTP 삭제)
+     * 2. 파일 매니저 앱에서 직접 삭제 (IS_TRASHED 미경유)
+     * 3. 앱이 파일을 직접 삭제 (MediaStore 업데이트 전)
+     * 4. adb shell rm 등 시스템 레벨 삭제
+     *
+     * Android 11+에서도 DATA 컬럼은 읽기 가능 (deprecated이지만 동작)
+     * MANAGE_EXTERNAL_STORAGE 권한으로 File.exists() 사용 가능
      */
     @Suppress("DEPRECATION")
     private suspend fun queryOrphanedFiles(
@@ -294,8 +337,9 @@ class MediaStoreDataSource(private val context: Context) {
                 val ext      = name.substringAfterLast('.', "").lowercase()
                 val uri      = ContentUris.withAppendedId(externalUri, id)
 
-                if (filePath.isNotEmpty() && java.io.File(filePath).exists()) continue
+                // 핵심: 경로가 있는데 실제 파일이 없으면 = 삭제된 파일
                 if (filePath.isEmpty()) continue
+                if (java.io.File(filePath).exists()) continue
 
                 val headerIntact = size > 1024L
                 val chance       = RecoveryAnalyzer.calcChance(size, headerIntact)
@@ -338,12 +382,10 @@ class MediaStoreDataSource(private val context: Context) {
             MediaStore.MediaColumns.IS_TRASHED
         )
 
-        // 전략 1: MATCH_INCLUDE + IS_TRASHED 필터
         queryOthersWithMode(externalUri, projection, MediaStore.MATCH_INCLUDE, true, seenIds, results)
-        // 전략 2: MATCH_ONLY
         queryOthersWithMode(externalUri, projection, MediaStore.MATCH_ONLY, false, seenIds, results)
 
-        Log.d(TAG, "OTHER trashed total: ${results.size}개")
+        Log.d(TAG, "OTHER trashed: ${results.size}개")
         return results
     }
 
@@ -386,20 +428,16 @@ class MediaStoreDataSource(private val context: Context) {
                     }
 
                     val mimeType = if (mimeCol >= 0) cursor.getString(mimeCol) ?: "" else ""
-
-                    // 이미 다른 스캔 함수에서 처리하는 타입 제외
                     if (EXCLUDE_MIME_PREFIXES.any { mimeType.startsWith(it) }) continue
                     if (mimeType in EXCLUDE_MIME_EXACT) continue
 
                     val name     = cursor.getString(nameCol) ?: continue
                     val size     = if (sizeCol >= 0) cursor.getLong(sizeCol) else 0L
-                    if (size < 1024L) continue  // 1KB 미만 스킵
+                    if (size < 1024L) continue
 
                     val modified = if (dateCol >= 0) cursor.getLong(dateCol) * 1000L else 0L
                     val ext      = name.substringAfterLast('.', "").lowercase()
                     val uri      = ContentUris.withAppendedId(externalUri, id)
-
-                    // 실제 확장자로 카테고리 판단 (AUDIO가 OTHER MIME으로 저장된 경우 등)
                     val category = FileExtensions.categoryOf(ext)
 
                     val headerIntact = size > 1024L
@@ -461,8 +499,8 @@ class MediaStoreDataSource(private val context: Context) {
                 if (size < 1024L) continue
 
                 val filePath = if (dataCol >= 0) (cursor.getString(dataCol) ?: "") else ""
-                if (filePath.isNotEmpty() && java.io.File(filePath).exists()) continue
                 if (filePath.isEmpty()) continue
+                if (java.io.File(filePath).exists()) continue
 
                 val modified = if (dateCol >= 0) cursor.getLong(dateCol) * 1000L else 0L
                 val ext      = name.substringAfterLast('.', "").lowercase()
