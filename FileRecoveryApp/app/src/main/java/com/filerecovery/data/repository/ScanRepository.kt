@@ -17,11 +17,10 @@ import kotlinx.coroutines.flow.flowOn
 /**
  * 3가지 스캔 소스를 병렬로 실행하고 Flow로 실시간 진행 상황을 방출합니다.
  *
- * [수정 사항]
- * - ✅ flow → channelFlow (withContext 내부 emit 안전성 확보)
- * - Uri 기반 중복 제거 (path가 빈 문자열인 MediaStore 결과 대응)
- * - 파일 시스템 스캔 시 일정 간격으로만 emit (O(n²) → O(n) 메모리 최적화)
- * - enum 직접 비교 (name String 비교 → enum 비교)
+ * [변경 사항]
+ * - scanOthers() 추가: APK, RAR, DB 등 기타 파일 스캔
+ * - ScanProgress에 otherCount 추가
+ * - ImageStore 5채널 병렬 쿼리 (images, videos, audios, documents, others)
  */
 class ScanRepository(
     private val mediaStore: MediaStoreDataSource,
@@ -33,26 +32,27 @@ class ScanRepository(
         private const val FS_EMIT_INTERVAL = 50
     }
 
-    // ✅ FIX: channelFlow 사용 — withContext 내부에서 안전하게 send 가능
     fun scanAll(): Flow<Pair<ScanProgress, List<RecoverableFile>>> = channelFlow {
         val accumulated = mutableListOf<RecoverableFile>()
         val seenUris  = mutableSetOf<String>()
         val seenPaths = mutableSetOf<String>()
         var progress = ScanProgress()
 
-        // -- 1단계: MediaStore 4채널 병렬 쿼리 --
+        // -- 1단계: MediaStore 5채널 병렬 쿼리 --
         coroutineScope {
-            val imgDeferred = async(Dispatchers.IO) { mediaStore.scanImages() }
-            val vidDeferred = async(Dispatchers.IO) { mediaStore.scanVideos() }
-            val audDeferred = async(Dispatchers.IO) { mediaStore.scanAudios() }
-            val docDeferred = async(Dispatchers.IO) { mediaStore.scanDocuments() }
+            val imgDeferred    = async(Dispatchers.IO) { mediaStore.scanImages() }
+            val vidDeferred    = async(Dispatchers.IO) { mediaStore.scanVideos() }
+            val audDeferred    = async(Dispatchers.IO) { mediaStore.scanAudios() }
+            val docDeferred    = async(Dispatchers.IO) { mediaStore.scanDocuments() }
+            val otherDeferred  = async(Dispatchers.IO) { mediaStore.scanOthers() }
 
             val images    = imgDeferred.await()
             val videos    = vidDeferred.await()
             val audios    = audDeferred.await()
             val documents = docDeferred.await()
+            val others    = otherDeferred.await()
 
-            val all = images + videos + audios + documents
+            val all = images + videos + audios + documents + others
             all.forEach { file ->
                 val key = file.uri?.toString() ?: file.path
                 if (key.isNotEmpty() && seenUris.add(key)) {
@@ -61,13 +61,7 @@ class ScanRepository(
                 }
             }
 
-            progress = progress.copy(
-                scannedCount  = accumulated.size,
-                imageCount    = accumulated.count { it.category == FileCategory.IMAGE },
-                videoCount    = accumulated.count { it.category == FileCategory.VIDEO },
-                audioCount    = accumulated.count { it.category == FileCategory.AUDIO },
-                documentCount = accumulated.count { it.category == FileCategory.DOCUMENT }
-            )
+            progress = buildProgress(accumulated, isFinished = false)
             send(Pair(progress, accumulated.toList()))
         }
 
@@ -83,10 +77,7 @@ class ScanRepository(
             }
 
             accumulated += newThumbs
-            progress = progress.copy(
-                scannedCount = accumulated.size,
-                imageCount   = progress.imageCount + newThumbs.size
-            )
+            progress = buildProgress(accumulated, isFinished = false)
             send(Pair(progress, accumulated.toList()))
         }
 
@@ -97,22 +88,25 @@ class ScanRepository(
             if (pathKey.isNotEmpty() && seenPaths.add(pathKey)) {
                 accumulated += file
 
-                progress = progress.copy(
-                    scannedCount  = accumulated.size,
-                    imageCount    = if (file.category == FileCategory.IMAGE)    progress.imageCount    + 1 else progress.imageCount,
-                    videoCount    = if (file.category == FileCategory.VIDEO)    progress.videoCount    + 1 else progress.videoCount,
-                    audioCount    = if (file.category == FileCategory.AUDIO)    progress.audioCount    + 1 else progress.audioCount,
-                    documentCount = if (file.category == FileCategory.DOCUMENT) progress.documentCount + 1 else progress.documentCount
-                )
-
                 fsAddedCount++
                 if (fsAddedCount % FS_EMIT_INTERVAL == 0) {
+                    progress = buildProgress(accumulated, isFinished = false)
                     send(Pair(progress, accumulated.toList()))
                 }
             }
         }
 
-        // 나머지 파일 최종 emit + 완료 플래그
-        send(Pair(progress.copy(isFinished = true), accumulated.toList()))
+        // 최종 emit + 완료 플래그
+        send(Pair(buildProgress(accumulated, isFinished = true), accumulated.toList()))
     }.flowOn(Dispatchers.IO)
+
+    private fun buildProgress(files: List<RecoverableFile>, isFinished: Boolean) = ScanProgress(
+        scannedCount  = files.size,
+        imageCount    = files.count { it.category == FileCategory.IMAGE },
+        videoCount    = files.count { it.category == FileCategory.VIDEO },
+        audioCount    = files.count { it.category == FileCategory.AUDIO },
+        documentCount = files.count { it.category == FileCategory.DOCUMENT },
+        otherCount    = files.count { it.category == FileCategory.OTHER },
+        isFinished    = isFinished
+    )
 }

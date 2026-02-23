@@ -23,7 +23,6 @@ import com.filerecovery.domain.model.FileCategory
 import com.filerecovery.presentation.theme.*
 import com.filerecovery.presentation.viewmodel.ScanViewModel
 
-// ✅ FIX: onScanStart 파라미터 제거 (미사용)
 @Composable
 fun DashboardScreen(
     onCategoryClick: (FileCategory) -> Unit,
@@ -53,7 +52,6 @@ fun DashboardScreen(
 
         Spacer(Modifier.height(24.dp))
 
-        // ✅ FIX: 스캔 에러 메시지 표시
         state.error?.let { errorMsg ->
             Card(
                 modifier = Modifier.fillMaxWidth(),
@@ -86,6 +84,7 @@ fun DashboardScreen(
             videoCount    = state.progress.videoCount,
             audioCount    = state.progress.audioCount,
             documentCount = state.progress.documentCount,
+            otherCount    = state.progress.otherCount,
             onCategoryClick = onCategoryClick
         )
 
@@ -167,7 +166,6 @@ private fun StorageGaugeSection(
 
 @Composable
 private fun CircularStorageGauge(usedPercent: Float) {
-    // ✅ FIX: EaseOutCubic → FastOutSlowInEasing (안정적인 Compose 내장 Easing)
     val animatedPercent by animateFloatAsState(
         targetValue   = usedPercent,
         animationSpec = tween(1200, easing = FastOutSlowInEasing),
@@ -202,6 +200,9 @@ private fun CircularStorageGauge(usedPercent: Float) {
     }
 }
 
+// 기타 파일 카테고리 색상
+private val OtherColor = Color(0xFFFF9800)  // 주황색
+
 @Composable
 private fun ScanningSection(progress: com.filerecovery.domain.model.ScanProgress) {
     val infiniteTransition = rememberInfiniteTransition(label = "radar")
@@ -211,7 +212,6 @@ private fun ScanningSection(progress: com.filerecovery.domain.model.ScanProgress
         animationSpec  = infiniteRepeatable(tween(2000, easing = LinearEasing)),
         label          = "radarRotation"
     )
-    // ✅ FIX: EaseInOut → FastOutSlowInEasing
     val pulse by infiniteTransition.animateFloat(
         initialValue   = 0.85f,
         targetValue    = 1.0f,
@@ -271,6 +271,7 @@ private fun ScanningSection(progress: com.filerecovery.domain.model.ScanProgress
                 ScanCountChip("영상",  progress.videoCount,    Secondary)
                 ScanCountChip("음악",  progress.audioCount,    HighGreen)
                 ScanCountChip("문서",  progress.documentCount, MedYellow)
+                ScanCountChip("기타",  progress.otherCount,    OtherColor)
             }
         }
     }
@@ -295,13 +296,15 @@ private fun CategoryGrid(
     videoCount: Int,
     audioCount: Int,
     documentCount: Int,
+    otherCount: Int,
     onCategoryClick: (FileCategory) -> Unit
 ) {
     val categories = listOf(
-        CategoryItem("사진 복구",   imageCount,    "JPG PNG WEBP", Primary,    FileCategory.IMAGE),
-        CategoryItem("동영상 복구", videoCount,    "MP4 MKV AVI",  Secondary,  FileCategory.VIDEO),
-        CategoryItem("오디오 복구", audioCount,    "MP3 WAV AAC",  HighGreen,  FileCategory.AUDIO),
-        CategoryItem("문서 복구",   documentCount, "PDF DOCX XLSX",MedYellow,  FileCategory.DOCUMENT)
+        CategoryItem("사진 복구",     imageCount,    "JPG PNG WEBP",   Primary,    FileCategory.IMAGE),
+        CategoryItem("동영상 복구",   videoCount,    "MP4 MKV AVI",    Secondary,  FileCategory.VIDEO),
+        CategoryItem("오디오 복구",   audioCount,    "MP3 WAV AAC",    HighGreen,  FileCategory.AUDIO),
+        CategoryItem("문서 복구",     documentCount, "PDF DOCX XLSX",  MedYellow,  FileCategory.DOCUMENT),
+        CategoryItem("기타 파일 복구", otherCount,   "APK RAR ZIP DB", OtherColor, FileCategory.OTHER)
     )
 
     Column {
@@ -349,6 +352,7 @@ private fun CategoryCard(item: CategoryItem, modifier: Modifier, onClick: (FileC
                     FileCategory.VIDEO    -> "🎬"
                     FileCategory.AUDIO    -> "🎵"
                     FileCategory.DOCUMENT -> "📄"
+                    FileCategory.OTHER    -> "📦"
                 }, fontSize = 16.sp)
             }
             Column {

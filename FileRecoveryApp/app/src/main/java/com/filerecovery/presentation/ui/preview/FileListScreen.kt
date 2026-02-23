@@ -9,8 +9,10 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -19,7 +21,11 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
@@ -38,6 +44,9 @@ import com.filerecovery.domain.model.RecoveryChance
 import com.filerecovery.presentation.theme.*
 import com.filerecovery.presentation.viewmodel.ScanViewModel
 
+// 기타 파일 카테고리 색상
+private val OtherColor = Color(0xFFFF9800)
+
 @Composable
 fun FileListScreen(
     category: FileCategory,
@@ -51,7 +60,6 @@ fun FileListScreen(
     }
     val selected = remember(category) { mutableStateListOf<String>() }
 
-    // 문서 프리뷰 상태
     var previewFile by remember { mutableStateOf<RecoverableFile?>(null) }
 
     Scaffold(
@@ -80,7 +88,6 @@ fun FileListScreen(
                 .padding(padding)
                 .padding(horizontal = if (category == FileCategory.IMAGE) 4.dp else 16.dp)
         ) {
-            // 헤더
             Spacer(Modifier.height(12.dp))
             Row(
                 modifier = Modifier.fillMaxWidth().padding(horizontal = if (category == FileCategory.IMAGE) 12.dp else 0.dp),
@@ -96,13 +103,14 @@ fun FileListScreen(
                     )
                     Spacer(Modifier.height(4.dp))
                     Text(
-                        text = if (category == FileCategory.IMAGE) "탭하여 선택 · 길게 눌러 미리보기"
-                        else "파일을 선택하고 '복구' 버튼을 누르세요",
+                        text = when (category) {
+                            FileCategory.IMAGE -> "탭하여 선택 · 길게 눌러 미리보기"
+                            else -> "파일을 선택하고 '복구' 버튼을 누르세요"
+                        },
                         color = TextSecond,
                         fontSize = 13.sp
                     )
                 }
-                // 전체선택 버튼
                 if (files.isNotEmpty()) {
                     TextButton(onClick = {
                         if (selected.size == files.size) {
@@ -123,10 +131,8 @@ fun FileListScreen(
             }
             Spacer(Modifier.height(12.dp))
 
-            // ── 카테고리별 다른 레이아웃 ──
             when (category) {
                 FileCategory.IMAGE -> {
-                    // 사진: 갤러리 그리드 (3열)
                     PhotoGalleryGrid(
                         files = files,
                         selected = selected,
@@ -136,7 +142,6 @@ fun FileListScreen(
                     )
                 }
                 FileCategory.DOCUMENT -> {
-                    // 문서: 리스트 + 프리뷰 버튼
                     DocumentList(
                         files = files,
                         selected = selected,
@@ -146,8 +151,17 @@ fun FileListScreen(
                         onPreview = { file -> previewFile = file }
                     )
                 }
+                FileCategory.OTHER -> {
+                    OtherFileList(
+                        files = files,
+                        selected = selected,
+                        onToggle = { id ->
+                            if (id in selected) selected.remove(id) else selected.add(id)
+                        },
+                        onPreview = { file -> previewFile = file }
+                    )
+                }
                 else -> {
-                    // 동영상, 오디오: 기존 리스트
                     DefaultFileList(
                         files = files,
                         selected = selected,
@@ -160,7 +174,6 @@ fun FileListScreen(
         }
     }
 
-    // 문서 프리뷰 다이얼로그
     previewFile?.let { file ->
         DocumentPreviewDialog(
             file = file,
@@ -170,7 +183,7 @@ fun FileListScreen(
 }
 
 // ═══════════════════════════════════════════════
-// 사진: 갤러리 그리드 (3열)
+// 사진: 갤러리 그리드 (3열) + 스크롤바
 // ═══════════════════════════════════════════════
 
 @Composable
@@ -179,19 +192,78 @@ private fun PhotoGalleryGrid(
     selected: List<String>,
     onToggle: (String) -> Unit
 ) {
-    LazyVerticalGrid(
-        columns = GridCells.Fixed(3),
-        horizontalArrangement = Arrangement.spacedBy(3.dp),
-        verticalArrangement = Arrangement.spacedBy(3.dp)
-    ) {
-        items(files, key = { it.id }) { file ->
-            val isSelected = file.id in selected
-            PhotoGridItem(
-                file = file,
-                isSelected = isSelected,
-                onToggle = { onToggle(file.id) }
-            )
+    val gridState = rememberLazyGridState()
+
+    Box(modifier = Modifier.fillMaxSize()) {
+        LazyVerticalGrid(
+            columns = GridCells.Fixed(3),
+            state = gridState,
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(end = 10.dp),  // 스크롤바 공간 확보
+            horizontalArrangement = Arrangement.spacedBy(3.dp),
+            verticalArrangement = Arrangement.spacedBy(3.dp)
+        ) {
+            items(files, key = { it.id }) { file ->
+                val isSelected = file.id in selected
+                PhotoGridItem(
+                    file = file,
+                    isSelected = isSelected,
+                    onToggle = { onToggle(file.id) }
+                )
+            }
         }
+
+        // 오른쪽 스크롤바
+        GridScrollbar(
+            state = gridState,
+            totalItems = files.size,
+            modifier = Modifier
+                .align(Alignment.CenterEnd)
+                .fillMaxHeight()
+                .width(6.dp)
+                .padding(vertical = 4.dp)
+        )
+    }
+}
+
+@Composable
+private fun GridScrollbar(
+    state: LazyGridState,
+    totalItems: Int,
+    modifier: Modifier = Modifier
+) {
+    val layoutInfo by remember { derivedStateOf { state.layoutInfo } }
+    val visibleCount = layoutInfo.visibleItemsInfo.size
+    val firstIndex by remember { derivedStateOf { state.firstVisibleItemIndex } }
+
+    // 스크롤 필요 없으면 표시 안 함
+    if (totalItems <= visibleCount || totalItems == 0) return
+
+    val thumbFraction = (visibleCount.toFloat() / totalItems).coerceIn(0.08f, 1f)
+    val maxOffset = 1f - thumbFraction
+    val thumbOffset = if (totalItems - visibleCount > 0) {
+        (firstIndex.toFloat() / (totalItems - visibleCount)) * maxOffset
+    } else 0f
+
+    androidx.compose.foundation.Canvas(modifier = modifier) {
+        val w = size.width
+        val h = size.height
+        val thumbH = h * thumbFraction
+        val thumbTop = (h - thumbH) * thumbOffset.coerceIn(0f, 1f)
+
+        // 트랙
+        drawRoundRect(
+            color = Color.White.copy(alpha = 0.08f),
+            cornerRadius = CornerRadius(w / 2)
+        )
+        // 썸
+        drawRoundRect(
+            color = Color.White.copy(alpha = 0.40f),
+            topLeft = Offset(0f, thumbTop),
+            size = Size(w, thumbH),
+            cornerRadius = CornerRadius(w / 2)
+        )
     }
 }
 
@@ -211,7 +283,6 @@ private fun PhotoGridItem(
                 else Modifier
             )
     ) {
-        // 썸네일 이미지
         if (file.uri != null) {
             AsyncImage(
                 model = ImageRequest.Builder(LocalContext.current)
@@ -231,7 +302,6 @@ private fun PhotoGridItem(
             }
         }
 
-        // 선택 체크 표시
         Box(
             modifier = Modifier
                 .align(Alignment.TopEnd)
@@ -249,7 +319,6 @@ private fun PhotoGridItem(
             }
         }
 
-        // 하단 복구 가능성 표시
         Box(
             modifier = Modifier
                 .align(Alignment.BottomStart)
@@ -320,7 +389,6 @@ private fun DocumentItemCard(
             modifier = Modifier.padding(12.dp).fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // 문서 아이콘
             Box(
                 modifier = Modifier
                     .size(52.dp)
@@ -333,7 +401,6 @@ private fun DocumentItemCard(
 
             Spacer(Modifier.width(12.dp))
 
-            // 파일 정보
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = file.name,
@@ -355,7 +422,6 @@ private fun DocumentItemCard(
                 RecoveryChanceChip(file.recoveryChance)
             }
 
-            // 프리뷰 버튼
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 IconButton(
                     onClick = onPreview,
@@ -368,6 +434,107 @@ private fun DocumentItemCard(
                     onCheckedChange = { onToggle() },
                     colors = CheckboxDefaults.colors(
                         checkedColor = Primary,
+                        uncheckedColor = TextSecond
+                    ),
+                    modifier = Modifier.size(20.dp)
+                )
+            }
+        }
+    }
+}
+
+// ═══════════════════════════════════════════════
+// 기타 파일: 리스트 + 프리뷰 버튼
+// ═══════════════════════════════════════════════
+
+@Composable
+private fun OtherFileList(
+    files: List<RecoverableFile>,
+    selected: List<String>,
+    onToggle: (String) -> Unit,
+    onPreview: (RecoverableFile) -> Unit
+) {
+    LazyColumn(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        items(files, key = { it.id }) { file ->
+            val isSelected = file.id in selected
+            OtherFileItemCard(
+                file = file,
+                isSelected = isSelected,
+                onToggle = { onToggle(file.id) },
+                onPreview = { onPreview(file) }
+            )
+        }
+    }
+}
+
+@Composable
+private fun OtherFileItemCard(
+    file: RecoverableFile,
+    isSelected: Boolean,
+    onToggle: () -> Unit,
+    onPreview: () -> Unit
+) {
+    val borderColor = if (isSelected) OtherColor else Color.Transparent
+
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onToggle() }
+            .border(1.5.dp, borderColor, RoundedCornerShape(14.dp)),
+        colors = CardDefaults.cardColors(
+            containerColor = if (isSelected) CardBg.copy(alpha = 0.8f) else CardBg
+        ),
+        shape = RoundedCornerShape(14.dp)
+    ) {
+        Row(
+            modifier = Modifier.padding(12.dp).fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(52.dp)
+                    .clip(RoundedCornerShape(10.dp))
+                    .background(OtherColor.copy(alpha = 0.12f)),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(otherExtToEmoji(file.extension), fontSize = 26.sp)
+            }
+
+            Spacer(Modifier.width(12.dp))
+
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = file.name,
+                    color = TextPrimary,
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Medium,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Spacer(Modifier.height(3.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(formatBytes(file.size), color = TextSecond, fontSize = 11.sp)
+                    Text("•", color = TextSecond, fontSize = 11.sp)
+                    Text(file.extension.uppercase().ifEmpty { "기타" }, color = TextSecond, fontSize = 11.sp)
+                    Text("•", color = TextSecond, fontSize = 11.sp)
+                    Text(formatDate(file.lastModified), color = TextSecond, fontSize = 11.sp)
+                }
+                Spacer(Modifier.height(6.dp))
+                RecoveryChanceChip(file.recoveryChance)
+            }
+
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                IconButton(
+                    onClick = onPreview,
+                    modifier = Modifier.size(36.dp)
+                ) {
+                    Text("👁", fontSize = 18.sp)
+                }
+                Checkbox(
+                    checked = isSelected,
+                    onCheckedChange = { onToggle() },
+                    colors = CheckboxDefaults.colors(
+                        checkedColor = OtherColor,
                         uncheckedColor = TextSecond
                     ),
                     modifier = Modifier.size(20.dp)
@@ -390,7 +557,9 @@ private fun DocumentPreviewDialog(file: RecoverableFile, onDismiss: () -> Unit) 
                 .fillMaxWidth(),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Text(extToEmoji(file.extension), fontSize = 48.sp)
+            val emoji = if (file.category == FileCategory.OTHER) otherExtToEmoji(file.extension)
+                        else extToEmoji(file.extension)
+            Text(emoji, fontSize = 48.sp)
             Spacer(Modifier.height(12.dp))
             Text(
                 file.name,
@@ -403,9 +572,8 @@ private fun DocumentPreviewDialog(file: RecoverableFile, onDismiss: () -> Unit) 
             )
             Spacer(Modifier.height(16.dp))
 
-            // 상세 정보
             listOf(
-                "파일 형식" to file.extension.uppercase(),
+                "파일 형식" to file.extension.uppercase().ifEmpty { "알 수 없음" },
                 "파일 크기" to formatBytes(file.size),
                 "수정 날짜" to formatDate(file.lastModified),
                 "복구 가능성" to when (file.recoveryChance) {
@@ -426,12 +594,9 @@ private fun DocumentPreviewDialog(file: RecoverableFile, onDismiss: () -> Unit) 
 
             Spacer(Modifier.height(16.dp))
 
-            // 외부 앱으로 열기 시도
             if (file.uri != null) {
                 OutlinedButton(
-                    onClick = {
-                        tryOpenWith(context, file)
-                    },
+                    onClick = { tryOpenWith(context, file) },
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(12.dp),
                     colors = ButtonDefaults.outlinedButtonColors(contentColor = Primary)
@@ -466,7 +631,15 @@ private fun mimeTypeOf(ext: String) = when (ext.lowercase()) {
     "xlsx", "xls" -> "application/vnd.ms-excel"
     "pptx", "ppt" -> "application/vnd.ms-powerpoint"
     "txt"         -> "text/plain"
-    else          -> "application/*"
+    "apk"         -> "application/vnd.android.package-archive"
+    "zip"         -> "application/zip"
+    "rar"         -> "application/x-rar-compressed"
+    "7z"          -> "application/x-7z-compressed"
+    "json"        -> "application/json"
+    "xml"         -> "text/xml"
+    "html", "htm" -> "text/html"
+    "csv"         -> "text/csv"
+    else          -> "*/*"
 }
 
 // ═══════════════════════════════════════════════
@@ -570,8 +743,9 @@ private fun FileThumbnail(file: RecoverableFile) {
                 PlaceholderIcon(modifier, if (file.category == FileCategory.IMAGE) "🖼" else "🎬")
             }
         }
-        FileCategory.AUDIO -> PlaceholderIcon(modifier, "🎵")
+        FileCategory.AUDIO    -> PlaceholderIcon(modifier, "🎵")
         FileCategory.DOCUMENT -> PlaceholderIcon(modifier, extToEmoji(file.extension))
+        FileCategory.OTHER    -> PlaceholderIcon(modifier, otherExtToEmoji(file.extension))
     }
 }
 
@@ -623,7 +797,6 @@ private fun RecoverBottomBar(
                 fontWeight = FontWeight.Medium
             )
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                // ✅ 테스트 복구 버튼 (결제 없이 복구 테스트)
                 if (onTestRecover != null) {
                     OutlinedButton(
                         onClick = onTestRecover,
@@ -654,6 +827,7 @@ private fun categoryTitle(cat: FileCategory) = when (cat) {
     FileCategory.VIDEO    -> "동영상"
     FileCategory.AUDIO    -> "오디오"
     FileCategory.DOCUMENT -> "문서"
+    FileCategory.OTHER    -> "기타 파일"
 }
 
 private fun extToEmoji(ext: String) = when (ext) {
@@ -661,7 +835,28 @@ private fun extToEmoji(ext: String) = when (ext) {
     "docx", "doc" -> "📘"
     "xlsx", "xls" -> "📗"
     "pptx", "ppt" -> "📙"
+    "hwp", "hwpx" -> "📄"
     else          -> "📄"
+}
+
+private fun otherExtToEmoji(ext: String) = when (ext.lowercase()) {
+    "apk"               -> "📱"
+    "zip"               -> "🗜"
+    "rar", "7z", "tar",
+    "gz", "bz2", "xz"  -> "📦"
+    "iso", "img"        -> "💿"
+    "db", "sqlite",
+    "sqlite3"           -> "🗄"
+    "json", "xml"       -> "📋"
+    "html", "htm", "css",
+    "js"                -> "🌐"
+    "csv"               -> "📊"
+    "log", "conf",
+    "cfg", "ini"        -> "⚙"
+    "torrent"           -> "🔗"
+    "vcf", "ics"        -> "📇"
+    "eml", "msg"        -> "📧"
+    else                -> "📦"
 }
 
 private fun formatBytes(bytes: Long): String = when {

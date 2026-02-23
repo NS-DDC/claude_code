@@ -3,7 +3,7 @@ package com.filerecovery.domain.model
 import android.net.Uri
 
 enum class FileCategory {
-    IMAGE, VIDEO, AUDIO, DOCUMENT
+    IMAGE, VIDEO, AUDIO, DOCUMENT, OTHER
 }
 
 enum class RecoveryChance {
@@ -22,7 +22,6 @@ data class RecoverableFile(
     val recoveryChance: RecoveryChance,
     val thumbnailUri: Uri? = null,
     val headerIntact: Boolean = false
-    // ✅ FIX: isSelected 제거 — UI 상태는 Composable 쪽에서 관리 (기존 dead code)
 )
 
 data class ScanProgress(
@@ -31,5 +30,6 @@ data class ScanProgress(
     val videoCount: Int = 0,
     val audioCount: Int = 0,
     val documentCount: Int = 0,
+    val otherCount: Int = 0,
     val isFinished: Boolean = false
 )
