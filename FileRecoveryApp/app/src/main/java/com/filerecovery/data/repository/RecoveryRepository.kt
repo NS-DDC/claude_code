@@ -153,6 +153,7 @@ class RecoveryRepository(private val context: Context) {
         FileCategory.VIDEO    -> "Videos"
         FileCategory.AUDIO    -> "Audio"
         FileCategory.DOCUMENT -> "Documents"
+        FileCategory.OTHER    -> "Others"
     }
 
     private fun mimeTypeOf(ext: String) = when (ext.lowercase()) {
