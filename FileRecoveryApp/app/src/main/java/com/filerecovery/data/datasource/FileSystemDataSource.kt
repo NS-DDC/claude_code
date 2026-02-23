@@ -38,9 +38,10 @@ class FileSystemDataSource {
          * - 일반 사용자 파일 디렉토리(DCIM, Pictures 등)는 제외
          */
         private val RECOVERY_SCAN_DIRS = listOf(
-            // 삼성 One UI / 일부 OEM 휴지통
+            // 삼성 One UI / 일부 OEM 휴지통 (대소문자 변형 모두 포함)
             "/storage/emulated/0/.Trash",
             "/storage/emulated/0/.Trashes",
+            "/storage/emulated/0/.trash",          // lowercase 변형 (일부 삼성)
             "/storage/emulated/0/.recently-deleted",
             // 파일 시스템 복구 잔여
             "/storage/emulated/0/lost+found",
@@ -52,6 +53,11 @@ class FileSystemDataSource {
             "/storage/emulated/0/.FileManagerTrash",
             "/storage/emulated/0/.recycle",
             "/storage/emulated/0/.Recycle",
+            // 삼성 My Files 휴지통 (MANAGE_EXTERNAL_STORAGE 있을 때 접근 가능)
+            "/storage/emulated/0/Android/data/com.sec.android.myfiles/.Recycle",
+            // 삼성 Gallery 임시 임시 경로 (일부 구형 One UI)
+            "/storage/emulated/0/DCIM/.Trash",
+            "/storage/emulated/0/Pictures/.Trash",
         )
     }
 
