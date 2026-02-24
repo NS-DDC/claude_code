@@ -175,6 +175,14 @@ class MediaStoreDataSource(private val context: Context) {
      * 삼성 OEM에서 QUERY_ARG_MATCH_TRASHED + QUERY_ARG_SQL_SELECTION 동시 사용 시
      * MATCH 플래그가 무시되어 휴지통 항목이 0건 반환되는 버그가 있음.
      * MIME 타입 필터는 커서 읽기 후 코드에서 처리.
+     *
+     * [IS_TRASHED 필터 전략 — v1.3.1]
+     * ┌─────────────┬──────────────────────────────────────────────┐
+     * │ MATCH_ONLY   │ 쿼리 자체가 trashed만 반환 → isTrashed==0   │
+     * │              │ 일 때만 스킵 (OEM이 비-trashed 섞는 경우)    │
+     * │ MATCH_INCLUDE│ 정상+삭제 전부 반환 → isTrashed!=1이면 스킵 │
+     * │              │ (컬럼 누락 시에도 정상 파일 유입 차단)        │
+     * └─────────────┴──────────────────────────────────────────────┘
      */
     @RequiresApi(Build.VERSION_CODES.R)
     private suspend fun queryWithBundle(
@@ -212,10 +220,18 @@ class MediaStoreDataSource(private val context: Context) {
                     val id = cursor.getLong(idCol)
                     if (!seenIds.add(id)) continue  // 전략 간 중복 제거
 
-                    // IS_TRASHED 검증: 컬럼 존재 시 반드시 1이어야 통과
-                    // MATCH_ONLY여도 삼성 OEM이 비-trashed 항목을 섞어 반환할 수 있어 재확인
+                    // ✅ FIX v1.3.1: IS_TRASHED 필터 모드별 분리
                     val isTrashed = if (trashedCol >= 0) cursor.getInt(trashedCol) else -1
-                    if (isTrashed == 0) continue   // 명확히 삭제 안 됨 → 스킵
+
+                    if (matchMode == MediaStore.MATCH_INCLUDE) {
+                        // MATCH_INCLUDE: 정상+삭제 전부 반환 → IS_TRASHED=1만 허용
+                        // 컬럼 누락(-1)이나 0 모두 스킵 → 정상 파일 유입 원천 차단
+                        if (isTrashed != 1) continue
+                    } else {
+                        // MATCH_ONLY: 쿼리 자체가 trashed만 반환 (신뢰)
+                        // 삼성 OEM이 비-trashed를 섞는 경우만 이중 검증
+                        if (isTrashed == 0) continue
+                    }
 
                     // MIME 타입 코드 필터 (문서 카테고리 전용, Bundle SQL selection 회피)
                     if (mimeTypes != null && mimeCol >= 0) {

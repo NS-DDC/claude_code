@@ -14,16 +14,17 @@ import java.util.UUID
 import kotlin.coroutines.coroutineContext
 
 /**
- * 파일 시스템 직접 순회 — 삭제 흔적 디렉토리 + 사용자 디렉토리 스캔
+ * 파일 시스템 직접 순회 — 삭제 흔적(휴지통/Trash) 디렉토리 전용 스캔
  *
- * [수정 사항]
- * ✅ MANAGE_EXTERNAL_STORAGE 하드게이트 제거 → 디렉토리별 SecurityException 처리
- *    (기존: 권한 없으면 즉시 return → 전체 파일시스템 스캔 0건)
- *    (수정: 권한 없어도 접근 가능한 디렉토리는 시도)
- * ✅ OEM 트래시 경로 대폭 추가 (삼성, 샤오미, OPPO, 화웨이, OnePlus, Vivo, Google Files)
- * ✅ 사용자 미디어 디렉토리(DCIM, Pictures, Download 등) 스캔 추가
- * ✅ 실제 Magic Number 헤더 검증 (기존: size > 1024 으로 추정)
- * ✅ Android/data 등 시스템 디렉토리 재귀 방지
+ * [핵심 원칙]
+ * 이 DataSource는 **휴지통/Trash/Recycle 디렉토리만** 스캔합니다.
+ * DCIM, Pictures 등 일반 사용자 디렉토리는 스캔하지 않습니다.
+ * → 일반 디렉토리를 스캔하면 방금 찍은 사진 등 정상 파일이 "복구 대상"으로 표시됨
+ *
+ * [수정 이력]
+ * ✅ v1.3.0: MANAGE_EXTERNAL_STORAGE 하드게이트 제거
+ * ✅ v1.3.0: OEM 트래시 경로 대폭 추가
+ * ✅ v1.3.1: USER_MEDIA_DIRS 삭제 — 정상 파일 오탐 근본 원인 제거
  *
  * [안전 장치]
  * - 최대 깊이 5 (순환 방지)
@@ -89,19 +90,6 @@ class FileSystemDataSource {
             "/storage/emulated/0/.thumbnails",
         )
 
-        /**
-         * 사용자 미디어 디렉토리 — MANAGE_EXTERNAL_STORAGE 보유 시 추가 스캔
-         * MediaStore에서 못 찾은 "고아 파일" 탐지 용도
-         */
-        private val USER_MEDIA_DIRS = listOf(
-            "/storage/emulated/0/DCIM",
-            "/storage/emulated/0/Pictures",
-            "/storage/emulated/0/Download",
-            "/storage/emulated/0/Movies",
-            "/storage/emulated/0/Music",
-            "/storage/emulated/0/Documents",
-        )
-
         /** 재귀 탐색에서 제외할 디렉토리 이름 */
         private val SKIP_DIR_NAMES = setOf("Android", ".android_secure", "cache", "code_cache")
     }
@@ -112,10 +100,11 @@ class FileSystemDataSource {
             Environment.isExternalStorageManager()
 
     /**
-     * 메인 스캔 진입점
+     * 메인 스캔 진입점 — 휴지통/Trash 디렉토리만 스캔
      *
-     * ✅ FIX: MANAGE_EXTERNAL_STORAGE 없어도 접근 가능한 디렉토리는 시도
-     * SecurityException은 디렉토리 단위로 처리 → 전체 스캔 중단 X
+     * ✅ FIX v1.3.1: USER_MEDIA_DIRS(DCIM, Pictures 등) 스캔 제거
+     *    → 정상 파일이 "복구 대상"으로 표시되는 버그 근본 원인
+     *    → 일반 디렉토리의 삭제된 파일은 MediaStore IS_TRASHED로 탐지됨
      */
     suspend fun scanAll(onFileFound: suspend (RecoverableFile) -> Unit) =
         withContext(Dispatchers.IO) {
@@ -123,7 +112,7 @@ class FileSystemDataSource {
             var scannedDirs = 0
             var skippedDirs = 0
 
-            // ── 1단계: 휴지통/삭제 흔적 디렉토리 (권한 없어도 항상 시도) ──
+            // 휴지통/삭제 흔적 디렉토리만 스캔 (권한 없어도 항상 시도)
             RECOVERY_SCAN_DIRS.forEach { dirPath ->
                 val dir = File(dirPath)
                 try {
@@ -133,21 +122,6 @@ class FileSystemDataSource {
                     }
                 } catch (_: SecurityException) {
                     skippedDirs++
-                }
-            }
-
-            // ── 2단계: 사용자 미디어 디렉토리 (전체 접근 권한 있을 때만) ──
-            if (hasFullAccess) {
-                USER_MEDIA_DIRS.forEach { dirPath ->
-                    val dir = File(dirPath)
-                    try {
-                        if (dir.exists() && dir.canRead()) {
-                            scanDirectory(dir, onFileFound, visited, depth = 0)
-                            scannedDirs++
-                        }
-                    } catch (_: SecurityException) {
-                        skippedDirs++
-                    }
                 }
             }
 
