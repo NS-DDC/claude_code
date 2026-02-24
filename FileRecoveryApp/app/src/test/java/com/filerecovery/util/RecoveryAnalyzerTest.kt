@@ -36,9 +36,9 @@ class RecoveryAnalyzerTest {
 
     @Test
     fun `calcChance returns MEDIUM at exact 10KB boundary`() {
-        // 10_240 바이트는 HIGH, 10_239는 MEDIUM
-        assertEquals(RecoveryChance.HIGH,   RecoveryAnalyzer.calcChance(10_240L, true))
-        assertEquals(RecoveryChance.MEDIUM, RecoveryAnalyzer.calcChance(10_239L, true))
+        // size > 10_240 이므로: 10_241=HIGH, 10_240=MEDIUM
+        assertEquals(RecoveryChance.HIGH,   RecoveryAnalyzer.calcChance(10_241L, true))
+        assertEquals(RecoveryChance.MEDIUM, RecoveryAnalyzer.calcChance(10_240L, true))
     }
 
     @Test
