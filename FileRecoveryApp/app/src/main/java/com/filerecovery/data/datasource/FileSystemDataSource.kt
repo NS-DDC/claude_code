@@ -39,8 +39,12 @@ class FileSystemDataSource {
         private const val MAX_DEPTH = 5
 
         /**
-         * 삭제된 파일이 존재할 수 있는 휴지통/캐시 디렉토리
-         * MANAGE_EXTERNAL_STORAGE 없이도 일부 경로는 접근 가능할 수 있음
+         * 사용자가 삭제한 파일이 존재하는 휴지통/Recycle 디렉토리만
+         *
+         * [v1.3.2 정리]
+         * ❌ 제거: gallery3d/cache (갤러리 캐시 — 휴지통 아님)
+         * ❌ 제거: .thumbnails 3개 (시스템 썸네일 — 유저 파일 아님)
+         * ❌ 제거: lost+found (시스템 파편 — 의미 없는 데이터)
          */
         private val RECOVERY_SCAN_DIRS = listOf(
             // ─── 삼성 One UI ────────────────────────
@@ -53,7 +57,6 @@ class FileSystemDataSource {
             "/storage/emulated/0/Pictures/.Trash",
             "/storage/emulated/0/Pictures/.trash",
             "/storage/emulated/0/Android/data/com.sec.android.myfiles/.Recycle",
-            "/storage/emulated/0/Android/data/com.sec.android.gallery3d/cache",
 
             // ─── Xiaomi / MIUI ──────────────────────
             "/storage/emulated/0/MIUI/.trashbin",
@@ -79,15 +82,9 @@ class FileSystemDataSource {
             "/storage/emulated/0/Android/data/com.google.android.apps.nbu.files/files/.trash",
 
             // ─── 공용 ───────────────────────────────
-            "/storage/emulated/0/lost+found",
             "/storage/emulated/0/.FileManagerTrash",
             "/storage/emulated/0/.recycle",
             "/storage/emulated/0/.Recycle",
-
-            // ─── 썸네일 캐시 (삭제 후에도 잔존) ─────
-            "/storage/emulated/0/DCIM/.thumbnails",
-            "/storage/emulated/0/Pictures/.thumbnails",
-            "/storage/emulated/0/.thumbnails",
         )
 
         /** 재귀 탐색에서 제외할 디렉토리 이름 */

@@ -7,7 +7,6 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.filerecovery.data.datasource.FileSystemDataSource
 import com.filerecovery.data.datasource.MediaStoreDataSource
-import com.filerecovery.data.datasource.ThumbnailCacheDataSource
 import com.filerecovery.data.repository.ScanRepository
 import com.filerecovery.domain.model.FileCategory
 import com.filerecovery.domain.model.RecoverableFile
@@ -38,9 +37,8 @@ data class ScanUiState(
 class ScanViewModel(app: Application) : AndroidViewModel(app) {
 
     private val repository = ScanRepository(
-        mediaStore     = MediaStoreDataSource(app),
-        thumbnailCache = ThumbnailCacheDataSource(app),
-        fileSystem     = FileSystemDataSource()
+        mediaStore = MediaStoreDataSource(app),
+        fileSystem = FileSystemDataSource()
     )
 
     private val _uiState = MutableStateFlow(ScanUiState())
