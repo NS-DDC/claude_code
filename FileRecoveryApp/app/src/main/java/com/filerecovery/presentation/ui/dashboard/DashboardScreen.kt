@@ -74,6 +74,25 @@ fun DashboardScreen(
             Spacer(Modifier.height(24.dp))
         }
 
+        // ✅ 스캔 완료 후 경고 메시지 표시 (권한 부족, 검색 결과 없음 등)
+        if (!state.isScanning && state.progress.warnings.isNotEmpty()) {
+            state.progress.warnings.forEach { warning ->
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors   = CardDefaults.cardColors(containerColor = MedYellow.copy(alpha = 0.10f)),
+                    shape    = RoundedCornerShape(12.dp)
+                ) {
+                    Row(modifier = Modifier.padding(12.dp), verticalAlignment = Alignment.Top) {
+                        Text("💡", fontSize = 14.sp)
+                        Spacer(Modifier.width(8.dp))
+                        Text(warning, color = TextSecond, fontSize = 12.sp)
+                    }
+                }
+                Spacer(Modifier.height(8.dp))
+            }
+            Spacer(Modifier.height(8.dp))
+        }
+
         Text(
             text       = "카테고리별 복구",
             color      = TextPrimary,

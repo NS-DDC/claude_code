@@ -19,9 +19,10 @@ import androidx.compose.ui.window.Dialog
 import com.filerecovery.domain.model.RecoverableFile
 import com.filerecovery.presentation.theme.*
 
+// 평생 무제한권 삭제 → 1일 복구권($1.00) 추가
 enum class PurchaseProduct(val productId: String, val title: String, val price: String, val desc: String) {
-    ONE_TIME("recover_once",      "1회 복구권",    "₩1,900", "선택한 파일을 1회 복구"),
-    UNLIMITED("recover_lifetime", "평생 무제한권", "₩9,900", "모든 파일 무제한 복구 + 향후 업데이트")
+    ONE_TIME("recover_once", "1회 복구권", "₩1,900", "선택한 파일을 1회 복구"),
+    ONE_DAY ("recover_daily",  "1일 복구권",  "$1.00",  "24시간 동안 무제한 복구")
 }
 
 @Composable
@@ -30,7 +31,8 @@ fun PurchaseDialog(
     onDismiss: () -> Unit,
     onPurchase: (PurchaseProduct) -> Unit
 ) {
-    var selected by remember { mutableStateOf(PurchaseProduct.UNLIMITED) }
+    // 기본 선택: ONE_DAY (추천)
+    var selected by remember { mutableStateOf(PurchaseProduct.ONE_DAY) }
 
     Dialog(onDismissRequest = onDismiss) {
         Column(
@@ -59,7 +61,7 @@ fun PurchaseDialog(
 
             Spacer(Modifier.height(20.dp))
 
-            // 상품 선택
+            // 상품 선택 (ONE_TIME, ONE_DAY)
             PurchaseProduct.entries.forEach { product ->
                 ProductOption(
                     product    = product,
@@ -72,7 +74,11 @@ fun PurchaseDialog(
             Spacer(Modifier.height(8.dp))
 
             // 혜택 리스트
-            listOf("광고 없는 클린 복구 경험", "복구 파일 즉시 다운로드", "24시간 고객 지원").forEach {
+            listOf(
+                "광고 없는 클린 복구 경험",
+                "복구 파일 즉시 다운로드",
+                "24시간 고객 지원"
+            ).forEach {
                 Row(modifier = Modifier.padding(vertical = 2.dp)) {
                     Text("✓ ", color = HighGreen, fontSize = 13.sp)
                     Text(it, color = TextSecond, fontSize = 13.sp)
@@ -97,7 +103,6 @@ fun PurchaseDialog(
             }
 
             Spacer(Modifier.height(8.dp))
-            // ✅ FIX: "언제든지 취소" → 일회성 상품에 맞는 문구
             Text(
                 text      = "Google Play 환불 정책 적용 • 안전하게 결제",
                 color     = TextSecond,
@@ -128,7 +133,8 @@ private fun ProductOption(product: PurchaseProduct, isSelected: Boolean, onClick
         Column {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(product.title, color = TextPrimary, fontWeight = FontWeight.Bold, fontSize = 15.sp)
-                if (product == PurchaseProduct.UNLIMITED) {
+                // ONE_DAY에 "추천" 배지
+                if (product == PurchaseProduct.ONE_DAY) {
                     Spacer(Modifier.width(8.dp))
                     Box(
                         modifier = Modifier
@@ -142,6 +148,11 @@ private fun ProductOption(product: PurchaseProduct, isSelected: Boolean, onClick
             }
             Text(product.desc, color = TextSecond, fontSize = 12.sp)
         }
-        Text(product.price, color = if (isSelected) Primary else TextPrimary, fontWeight = FontWeight.ExtraBold, fontSize = 16.sp)
+        Text(
+            product.price,
+            color      = if (isSelected) Primary else TextPrimary,
+            fontWeight = FontWeight.ExtraBold,
+            fontSize   = 16.sp
+        )
     }
 }

@@ -10,7 +10,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.channelFlow
 import kotlinx.coroutines.flow.flowOn
 
@@ -18,10 +17,10 @@ import kotlinx.coroutines.flow.flowOn
  * 3가지 스캔 소스를 병렬로 실행하고 Flow로 실시간 진행 상황을 방출합니다.
  *
  * [수정 사항]
- * - ✅ flow → channelFlow (withContext 내부 emit 안전성 확보)
+ * - ✅ 스캔 완료 시 경고 메시지(warnings) 생성 — 권한 부족 등 사용자 피드백
+ * - channelFlow 사용 — withContext 내부에서 안전하게 send 가능
  * - Uri 기반 중복 제거 (path가 빈 문자열인 MediaStore 결과 대응)
  * - 파일 시스템 스캔 시 일정 간격으로만 emit (O(n²) → O(n) 메모리 최적화)
- * - enum 직접 비교 (name String 비교 → enum 비교)
  */
 class ScanRepository(
     private val mediaStore: MediaStoreDataSource,
@@ -33,7 +32,6 @@ class ScanRepository(
         private const val FS_EMIT_INTERVAL = 50
     }
 
-    // ✅ FIX: channelFlow 사용 — withContext 내부에서 안전하게 send 가능
     fun scanAll(): Flow<Pair<ScanProgress, List<RecoverableFile>>> = channelFlow {
         val accumulated = mutableListOf<RecoverableFile>()
         val seenUris  = mutableSetOf<String>()
@@ -41,6 +39,7 @@ class ScanRepository(
         var progress = ScanProgress()
 
         // -- 1단계: MediaStore 4채널 병렬 쿼리 --
+        val mediaStoreCount: Int
         coroutineScope {
             val imgDeferred = async(Dispatchers.IO) { mediaStore.scanImages() }
             val vidDeferred = async(Dispatchers.IO) { mediaStore.scanVideos() }
@@ -60,6 +59,8 @@ class ScanRepository(
                     if (file.path.isNotEmpty()) seenPaths.add(file.path)
                 }
             }
+
+            mediaStoreCount = accumulated.size
 
             progress = progress.copy(
                 scannedCount  = accumulated.size,
@@ -91,6 +92,7 @@ class ScanRepository(
         }
 
         // -- 3단계: 파일 시스템 순회 (배치 emit) --
+        val fsStartCount = accumulated.size
         var fsAddedCount = 0
         fileSystem.scanAll { file ->
             val pathKey = file.path
@@ -111,8 +113,25 @@ class ScanRepository(
                 }
             }
         }
+        val fsCount = accumulated.size - fsStartCount
 
-        // 나머지 파일 최종 emit + 완료 플래그
-        send(Pair(progress.copy(isFinished = true), accumulated.toList()))
+        // -- 스캔 완료 → 경고 메시지 생성 --
+        val warnings = buildList {
+            if (!fileSystem.hasFullAccess) {
+                add("⚠️ '전체 파일 접근' 권한 미허용 — 심층 스캔이 제한됩니다. 설정에서 권한을 허용하면 더 많은 파일을 찾을 수 있습니다.")
+            }
+            if (mediaStoreCount == 0 && fsCount == 0) {
+                add("휴지통에서 삭제된 파일을 찾지 못했습니다. 파일이 완전 삭제된 경우 복구가 불가능할 수 있습니다.")
+            }
+            if (mediaStoreCount == 0) {
+                add("MediaStore 휴지통(IS_TRASHED)에서 파일을 찾지 못했습니다. 갤러리 '최근 삭제' 폴더를 확인해보세요.")
+            }
+        }
+
+        // 최종 emit + 완료 플래그
+        send(Pair(
+            progress.copy(isFinished = true, warnings = warnings),
+            accumulated.toList()
+        ))
     }.flowOn(Dispatchers.IO)
 }

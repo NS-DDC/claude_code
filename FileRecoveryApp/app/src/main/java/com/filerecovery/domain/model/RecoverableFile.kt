@@ -31,5 +31,6 @@ data class ScanProgress(
     val videoCount: Int = 0,
     val audioCount: Int = 0,
     val documentCount: Int = 0,
-    val isFinished: Boolean = false
+    val isFinished: Boolean = false,
+    val warnings: List<String> = emptyList()   // ✅ 스캔 피드백 (권한 부족, 접근 거부 등)
 )

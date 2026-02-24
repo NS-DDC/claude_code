@@ -122,6 +122,16 @@ class MediaStoreDataSource(private val context: Context) {
     // Android 11+: IS_TRASHED 기반 3단계 폴백
     // ─────────────────────────────────────────────────────────────────────
 
+    /**
+     * ✅ FIX: 3단계 폴백을 전부 항상 실행하고 병합
+     *
+     * [기존 문제]
+     * 1단계가 일부 파일만 반환하면 → 거기서 return → 나머지 파일을 놓침
+     * 삼성 OEM에서 MATCH_ONLY가 일부 결과만 반환하는 케이스 존재
+     *
+     * [수정 후]
+     * 3단계 모두 실행 → seenIds로 중복 제거 → 전체 결과 병합
+     */
     @RequiresApi(Build.VERSION_CODES.R)
     private suspend fun queryTrashedFiles(
         externalUri: Uri,
@@ -129,32 +139,32 @@ class MediaStoreDataSource(private val context: Context) {
         mimeTypes: List<String>?
     ): List<RecoverableFile> {
         val seenIds = mutableSetOf<Long>()
+        val allResults = mutableListOf<RecoverableFile>()
 
-        // 1단계: MATCH_ONLY — SQL selection 없이 단독 사용 (삼성 One UI 최우선)
-        // 핵심: Bundle에 QUERY_ARG_SQL_SELECTION을 넣지 않아야 삼성 OEM에서 정상 동작
+        // 1단계: MATCH_ONLY — SQL selection 없이 (삼성 One UI 최우선)
         val s1 = queryWithBundle(
             externalUri, category, mimeTypes,
             matchMode = MediaStore.MATCH_ONLY,
             seenIds = seenIds
         )
+        allResults += s1
         Log.d(TAG, "${category.name} 1단계(MATCH_ONLY): ${s1.size}개")
-        if (s1.isNotEmpty()) return s1
 
-        // 2단계: MATCH_INCLUDE + IS_TRASHED 코드 필터
-        // MATCH_ONLY가 0건일 때 시도 (일부 AOSP 빌드 대응)
+        // 2단계: MATCH_INCLUDE + IS_TRASHED 코드 필터 (항상 실행)
         val s2 = queryWithBundle(
             externalUri, category, mimeTypes,
             matchMode = MediaStore.MATCH_INCLUDE,
             seenIds = seenIds
         )
-        Log.d(TAG, "${category.name} 2단계(MATCH_INCLUDE): ${s2.size}개")
-        if (s2.isNotEmpty()) return s2
+        allResults += s2
+        Log.d(TAG, "${category.name} 2단계(MATCH_INCLUDE): +${s2.size}개")
 
-        // 3단계: Bundle 없이 IS_TRASHED=1 직접 WHERE 절 사용
-        // Bundle QUERY_ARG를 완전히 무시하는 OEM 최후 수단
+        // 3단계: Bundle 없이 IS_TRASHED=1 직접 WHERE (항상 실행)
         val s3 = queryTrashedDirectSelection(externalUri, category, mimeTypes, seenIds)
-        Log.d(TAG, "${category.name} 3단계(직접쿼리): ${s3.size}개")
-        return s3
+        allResults += s3
+        Log.d(TAG, "${category.name} 3단계(직접쿼리): +${s3.size}개 → 총 ${allResults.size}개")
+
+        return allResults
     }
 
     /**
