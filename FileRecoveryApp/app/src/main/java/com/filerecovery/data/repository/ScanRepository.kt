@@ -2,6 +2,7 @@ package com.filerecovery.data.repository
 
 import com.filerecovery.data.datasource.FileSystemDataSource
 import com.filerecovery.data.datasource.MediaStoreDataSource
+import com.filerecovery.data.datasource.RawDiskDataSource
 import com.filerecovery.domain.model.FileCategory
 import com.filerecovery.domain.model.RecoverableFile
 import com.filerecovery.domain.model.ScanProgress
@@ -13,12 +14,12 @@ import kotlinx.coroutines.flow.channelFlow
 import kotlinx.coroutines.flow.flowOn
 
 /**
- * 스캔 파이프라인 — MediaStore + 파일시스템(OEM 휴지통) 2단계
+ * 스캔 파이프라인 — MediaStore + 파일시스템(OEM 휴지통) + Raw 디스크(루트) 3단계
  *
- * [v1.3.2 변경]
- * ✅ ThumbnailCacheDataSource 제거
- *    → .thumbnails는 시스템 캐시이며 사용자 파일이 아님
- *    → 정상 사진의 썸네일이 "복구 대상"으로 표시되는 오탐 원인이었음
+ * [v1.4 변경]
+ * ✅ 3단계 추가: RawDiskDataSource — 루트 권한 Raw 디스크 카빙
+ *    → 30일 경과 완전 삭제 파일 복구 가능
+ *    → 루트 가용 시에만 실행
  *
  * [스캔 순서]
  * 1단계: MediaStore IS_TRASHED 4채널 병렬 (사진/동영상/음악/문서)
@@ -26,10 +27,13 @@ import kotlinx.coroutines.flow.flowOn
  *        → RELATIVE_PATH 필터로 앱 임시데이터(카톡/인스타 등) 자동 제외
  * 2단계: 파일시스템 OEM 휴지통 디렉토리 순회
  *        → 삼성/샤오미/OPPO/화웨이 등 전용 Trash 폴더
+ * 3단계: Raw 디스크 카빙 (루트 전용)
+ *        → 블록 디바이스 직접 스캔, Magic Number 기반 파일 복구
  */
 class ScanRepository(
     private val mediaStore: MediaStoreDataSource,
-    private val fileSystem: FileSystemDataSource
+    private val fileSystem: FileSystemDataSource,
+    private val rawDisk: RawDiskDataSource? = null   // 루트 가용 시에만 주입
 ) {
 
     companion object {
@@ -106,7 +110,7 @@ class ScanRepository(
                 add("⚠️ '전체 파일 접근' 권한 미허용 — 심층 스캔이 제한됩니다. 설정에서 권한을 허용하면 더 많은 파일을 찾을 수 있습니다.")
             }
             if (mediaStoreCount == 0 && fsCount == 0) {
-                add("휴지통에서 삭제된 파일을 찾지 못했습니다. 파일이 완전 삭제(30일 경과)된 경우 복구가 불가능할 수 있습니다.")
+                add("휴지통에서 삭제된 파일을 찾지 못했습니다. '심층 스캔'으로 디스크에서 직접 복구를 시도하세요.")
             }
             if (mediaStoreCount == 0) {
                 add("MediaStore 휴지통에서 파일을 찾지 못했습니다. 갤러리 앱의 '최근 삭제' 폴더를 확인해보세요.")
@@ -119,4 +123,25 @@ class ScanRepository(
             accumulated.toList()
         ))
     }.flowOn(Dispatchers.IO)
+
+    /**
+     * [v1.4] 심층 디스크 스캔 (루트 권한 필요)
+     *
+     * 기존 scanAll()과 독립적으로 실행됩니다.
+     * Raw 블록 디바이스를 직접 스캔하여 삭제된 파일을 카빙합니다.
+     *
+     * @param existingFiles 기존 스캔 결과 (중복 방지용)
+     * @return 심층 스캔 진행률 + 발견 파일
+     */
+    fun deepScan(existingFiles: List<RecoverableFile> = emptyList()): Flow<Pair<ScanProgress, List<RecoverableFile>>>? {
+        val ds = rawDisk ?: return null
+
+        val existingPaths = existingFiles.mapNotNull { it.path.takeIf { p -> p.isNotEmpty() } }.toSet()
+
+        return channelFlow {
+            ds.scan(existingPaths).collect { result ->
+                send(Pair(result.progress, result.files))
+            }
+        }.flowOn(Dispatchers.IO)
+    }
 }

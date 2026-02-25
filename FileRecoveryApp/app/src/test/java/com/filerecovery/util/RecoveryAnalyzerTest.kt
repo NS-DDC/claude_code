@@ -198,6 +198,138 @@ class RecoveryAnalyzerTest {
         assertEquals("복구 가능성 낮음", RecoveryAnalyzer.chanceLabel(RecoveryChance.LOW))
     }
 
+    // ══════════════════════════════════════════
+    // v1.4: findMagicInBuffer 테스트
+    // ══════════════════════════════════════════
+
+    @Test
+    fun `findMagicInBuffer detects JPEG at start of buffer`() {
+        val buf = ByteArray(1024)
+        buf[0] = 0xFF.toByte(); buf[1] = 0xD8.toByte(); buf[2] = 0xFF.toByte()
+        val matches = RecoveryAnalyzer.findMagicInBuffer(buf, buf.size)
+        assertTrue(matches.any { it.extension == "jpg" && it.bufferOffset == 0 })
+    }
+
+    @Test
+    fun `findMagicInBuffer detects PNG at offset 512`() {
+        val buf = ByteArray(1024)
+        val pos = 512
+        buf[pos] = 0x89.toByte(); buf[pos+1] = 0x50; buf[pos+2] = 0x4E; buf[pos+3] = 0x47
+        val matches = RecoveryAnalyzer.findMagicInBuffer(buf, buf.size)
+        assertTrue(matches.any { it.extension == "png" && it.bufferOffset == 512 })
+    }
+
+    @Test
+    fun `findMagicInBuffer detects MP4 ftyp with offset correction`() {
+        // ftyp magic은 파일 시작+4에 위치 → bufferOffset = pos-4
+        val buf = ByteArray(1024)
+        val magicPos = 104  // magic 바이트 위치
+        buf[magicPos] = 0x66; buf[magicPos+1] = 0x74; buf[magicPos+2] = 0x79; buf[magicPos+3] = 0x70
+        val matches = RecoveryAnalyzer.findMagicInBuffer(buf, buf.size)
+        assertTrue(matches.any { it.extension == "mp4" && it.bufferOffset == 100 })
+    }
+
+    @Test
+    fun `findMagicInBuffer returns empty for blank buffer`() {
+        val buf = ByteArray(1024)  // all zeros
+        val matches = RecoveryAnalyzer.findMagicInBuffer(buf, buf.size)
+        assertTrue(matches.isEmpty())
+    }
+
+    @Test
+    fun `findMagicInBuffer detects multiple signatures in same buffer`() {
+        val buf = ByteArray(2048)
+        // JPEG at 0
+        buf[0] = 0xFF.toByte(); buf[1] = 0xD8.toByte(); buf[2] = 0xFF.toByte()
+        // PDF at 1024
+        buf[1024] = 0x25; buf[1025] = 0x50; buf[1026] = 0x44; buf[1027] = 0x46
+        val matches = RecoveryAnalyzer.findMagicInBuffer(buf, buf.size)
+        assertTrue(matches.any { it.extension == "jpg" })
+        assertTrue(matches.any { it.extension == "pdf" })
+        assertTrue(matches.size >= 2)
+    }
+
+    @Test
+    fun `findMagicInBuffer respects bufferSize limit`() {
+        val buf = ByteArray(1024)
+        // JPEG at offset 500 — but bufferSize is 100 (shouldn't find it)
+        buf[500] = 0xFF.toByte(); buf[501] = 0xD8.toByte(); buf[502] = 0xFF.toByte()
+        val matches = RecoveryAnalyzer.findMagicInBuffer(buf, 100)
+        assertFalse(matches.any { it.bufferOffset == 500 })
+    }
+
+    // ══════════════════════════════════════════
+    // v1.4: findEndMarker 테스트
+    // ══════════════════════════════════════════
+
+    @Test
+    fun `findEndMarker finds JPEG EOI (FFD9)`() {
+        val buf = ByteArray(1024)
+        buf[500] = 0xFF.toByte(); buf[501] = 0xD9.toByte()
+        val pos = RecoveryAnalyzer.findEndMarker(buf, buf.size, "jpg")
+        assertEquals(502, pos)  // 마커 직후
+    }
+
+    @Test
+    fun `findEndMarker finds PNG IEND chunk`() {
+        val buf = ByteArray(1024)
+        val iend = byteArrayOf(0x49, 0x45, 0x4E, 0x44,
+            0xAE.toByte(), 0x42, 0x60, 0x82.toByte())
+        iend.copyInto(buf, 200)
+        val pos = RecoveryAnalyzer.findEndMarker(buf, buf.size, "png")
+        assertEquals(208, pos)
+    }
+
+    @Test
+    fun `findEndMarker finds PDF EOF`() {
+        val buf = ByteArray(1024)
+        val eof = byteArrayOf(0x25, 0x25, 0x45, 0x4F, 0x46)  // %%EOF
+        eof.copyInto(buf, 800)
+        val pos = RecoveryAnalyzer.findEndMarker(buf, buf.size, "pdf")
+        assertEquals(805, pos)
+    }
+
+    @Test
+    fun `findEndMarker returns -1 for format without end marker`() {
+        val buf = ByteArray(1024)
+        val pos = RecoveryAnalyzer.findEndMarker(buf, buf.size, "mp4")
+        assertEquals(-1, pos)
+    }
+
+    @Test
+    fun `findEndMarker returns -1 when no marker in buffer`() {
+        val buf = ByteArray(1024)  // all zeros
+        val pos = RecoveryAnalyzer.findEndMarker(buf, buf.size, "jpg")
+        assertEquals(-1, pos)
+    }
+
+    // ══════════════════════════════════════════
+    // v1.4: hasEndMarker / categoryForExtension 테스트
+    // ══════════════════════════════════════════
+
+    @Test
+    fun `hasEndMarker returns true for jpg png pdf`() {
+        assertTrue(RecoveryAnalyzer.hasEndMarker("jpg"))
+        assertTrue(RecoveryAnalyzer.hasEndMarker("png"))
+        assertTrue(RecoveryAnalyzer.hasEndMarker("pdf"))
+    }
+
+    @Test
+    fun `hasEndMarker returns false for mp4 mkv mp3`() {
+        assertFalse(RecoveryAnalyzer.hasEndMarker("mp4"))
+        assertFalse(RecoveryAnalyzer.hasEndMarker("mkv"))
+        assertFalse(RecoveryAnalyzer.hasEndMarker("mp3"))
+    }
+
+    @Test
+    fun `categoryForExtension returns correct categories`() {
+        assertEquals(com.filerecovery.domain.model.FileCategory.IMAGE, RecoveryAnalyzer.categoryForExtension("jpg"))
+        assertEquals(com.filerecovery.domain.model.FileCategory.VIDEO, RecoveryAnalyzer.categoryForExtension("mp4"))
+        assertEquals(com.filerecovery.domain.model.FileCategory.AUDIO, RecoveryAnalyzer.categoryForExtension("mp3"))
+        assertEquals(com.filerecovery.domain.model.FileCategory.DOCUMENT, RecoveryAnalyzer.categoryForExtension("pdf"))
+        assertEquals(com.filerecovery.domain.model.FileCategory.DOCUMENT, RecoveryAnalyzer.categoryForExtension("unknown"))
+    }
+
     // ──────────────────────────────────────────
     // 헬퍼
     // ──────────────────────────────────────────
