@@ -12,14 +12,24 @@ android {
         applicationId  = "com.filerecovery.master"
         minSdk         = 26          // Android 8.0+ 타겟
         targetSdk      = 34
-        versionCode    = 1
-        versionName    = "1.0.0"
+        versionCode    = 4
+        versionName    = "1.4.0"
+    }
+
+    signingConfigs {
+        create("release") {
+            storeFile     = file("release-keystore.jks")
+            storePassword = "filerecovery2024"
+            keyAlias      = "filerecovery"
+            keyPassword   = "filerecovery2024"
+        }
     }
 
     buildTypes {
         release {
             isMinifyEnabled  = true
             isShrinkResources = true
+            signingConfig = signingConfigs.getByName("release")
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
         }
     }
