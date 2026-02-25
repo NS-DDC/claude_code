@@ -109,11 +109,12 @@ class BillingRepository(private val context: Context) {
             .setProductType(BillingClient.ProductType.INAPP)
             .build()
         billingClient?.queryPurchasesAsync(params) { _, purchases ->
-            val hasLifetime = purchases.any { p ->
-                p.products.contains(PurchaseProduct.UNLIMITED.productId) &&
+            // ONE_DAY 패스 구매 여부 확인
+            val hasOneDayPass = purchases.any { p ->
+                p.products.contains(PurchaseProduct.ONE_DAY.productId) &&
                     p.purchaseState == Purchase.PurchaseState.PURCHASED
             }
-            if (hasLifetime) _billingState.value = BillingState.AlreadyPurchased
+            if (hasOneDayPass) _billingState.value = BillingState.AlreadyPurchased
         }
     }
 

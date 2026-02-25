@@ -74,6 +74,46 @@ fun DashboardScreen(
             Spacer(Modifier.height(24.dp))
         }
 
+        // ✅ v1.4: 심층 스캔 진행 중
+        if (state.isDeepScanning) {
+            DeepScanningSection(progress = state.deepScanProgress)
+            Spacer(Modifier.height(24.dp))
+        }
+
+        // ✅ v1.4: 루트 감지 시 심층 스캔 버튼 (일반 스캔 완료 후에만 표시)
+        if (!state.isScanning && !state.isDeepScanning && state.isRootAvailable && state.progress.isFinished) {
+            DeepScanButton(
+                onDeepScanClick = { vm.startDeepScan() },
+                carvedCount = state.deepScanFiles.size
+            )
+            Spacer(Modifier.height(16.dp))
+        }
+
+        // ✅ v1.4: 루트 미감지 + 일반 스캔 완료 → 루트 필요 안내
+        if (!state.isScanning && !state.isRootAvailable && state.progress.isFinished) {
+            RootRequiredHint()
+            Spacer(Modifier.height(16.dp))
+        }
+
+        // ✅ 스캔 완료 후 경고 메시지 표시 (권한 부족, 검색 결과 없음 등)
+        if (!state.isScanning && state.progress.warnings.isNotEmpty()) {
+            state.progress.warnings.forEach { warning ->
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors   = CardDefaults.cardColors(containerColor = MedYellow.copy(alpha = 0.10f)),
+                    shape    = RoundedCornerShape(12.dp)
+                ) {
+                    Row(modifier = Modifier.padding(12.dp), verticalAlignment = Alignment.Top) {
+                        Text("💡", fontSize = 14.sp)
+                        Spacer(Modifier.width(8.dp))
+                        Text(warning, color = TextSecond, fontSize = 12.sp)
+                    }
+                }
+                Spacer(Modifier.height(8.dp))
+            }
+            Spacer(Modifier.height(8.dp))
+        }
+
         Text(
             text       = "카테고리별 복구",
             color      = TextPrimary,
@@ -357,6 +397,177 @@ private fun CategoryCard(item: CategoryItem, modifier: Modifier, onClick: (FileC
                     if (item.count > 0) "${item.count}개 발견" else item.formats,
                     color    = if (item.count > 0) item.color else TextSecond,
                     fontSize = 11.sp
+                )
+            }
+        }
+    }
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// ✅ v1.4: 심층 스캔(디스크 카빙) UI 컴포넌트
+// ═══════════════════════════════════════════════════════════════════════
+
+@Composable
+private fun DeepScanButton(onDeepScanClick: () -> Unit, carvedCount: Int) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors   = CardDefaults.cardColors(containerColor = CardBg),
+        shape    = RoundedCornerShape(16.dp),
+        border   = BorderStroke(1.dp, Secondary.copy(alpha = 0.5f))
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text("🔓", fontSize = 18.sp)
+                Spacer(Modifier.width(8.dp))
+                Text(
+                    "루트 권한 감지됨",
+                    color = Secondary,
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+            Spacer(Modifier.height(8.dp))
+            Text(
+                "디스크를 직접 스캔하여 완전 삭제된 파일도 복구합니다.\n30일이 지나 휴지통에서 제거된 파일을 찾을 수 있습니다.",
+                color = TextSecond,
+                fontSize = 12.sp,
+                lineHeight = 18.sp
+            )
+            if (carvedCount > 0) {
+                Spacer(Modifier.height(6.dp))
+                Text(
+                    "이전 심층 스캔: ${carvedCount}개 파일 발견",
+                    color = HighGreen,
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.SemiBold
+                )
+            }
+            Spacer(Modifier.height(12.dp))
+            Button(
+                onClick  = onDeepScanClick,
+                modifier = Modifier.fillMaxWidth(),
+                colors   = ButtonDefaults.buttonColors(containerColor = Secondary),
+                shape    = RoundedCornerShape(12.dp)
+            ) {
+                Text(
+                    "심층 디스크 스캔 시작",
+                    color = Color.Black,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 14.sp
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun DeepScanningSection(progress: com.filerecovery.domain.model.ScanProgress) {
+    val infiniteTransition = rememberInfiniteTransition(label = "deepScan")
+    val pulse by infiniteTransition.animateFloat(
+        initialValue  = 0.6f,
+        targetValue   = 1.0f,
+        animationSpec = infiniteRepeatable(tween(1200, easing = FastOutSlowInEasing), RepeatMode.Reverse),
+        label         = "deepPulse"
+    )
+
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors   = CardDefaults.cardColors(containerColor = CardBg),
+        shape    = RoundedCornerShape(20.dp),
+        border   = BorderStroke(1.dp, Secondary.copy(alpha = 0.3f))
+    ) {
+        Column(
+            modifier = Modifier.padding(20.dp).fillMaxWidth(),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text("🔍", fontSize = 20.sp)
+                Spacer(Modifier.width(8.dp))
+                Text(
+                    "심층 디스크 스캔 중...",
+                    color = Secondary,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 16.sp
+                )
+            }
+
+            Spacer(Modifier.height(16.dp))
+
+            // 진행률 바
+            LinearProgressIndicator(
+                progress   = { progress.deepScanProgress.coerceIn(0f, 1f) },
+                modifier   = Modifier
+                    .fillMaxWidth()
+                    .height(8.dp)
+                    .clip(RoundedCornerShape(4.dp)),
+                color      = Secondary,
+                trackColor = Secondary.copy(alpha = 0.15f)
+            )
+
+            Spacer(Modifier.height(8.dp))
+
+            // 진행 정보
+            Row(
+                modifier              = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Text(
+                    "${(progress.deepScanProgress * 100).toInt()}%",
+                    color    = Secondary,
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Bold
+                )
+                Text(
+                    "${progress.deepScanScannedMB} / ${progress.deepScanTotalMB} MB",
+                    color    = TextSecond,
+                    fontSize = 12.sp
+                )
+            }
+
+            Spacer(Modifier.height(12.dp))
+
+            // 발견 파일 카운트
+            Row(
+                modifier              = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceEvenly
+            ) {
+                ScanCountChip("사진",  progress.imageCount,    Primary)
+                ScanCountChip("영상",  progress.videoCount,    Secondary)
+                ScanCountChip("음악",  progress.audioCount,    HighGreen)
+                ScanCountChip("문서",  progress.documentCount, MedYellow)
+            }
+        }
+    }
+}
+
+@Composable
+private fun RootRequiredHint() {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors   = CardDefaults.cardColors(containerColor = CardBg.copy(alpha = 0.7f)),
+        shape    = RoundedCornerShape(12.dp)
+    ) {
+        Row(
+            modifier          = Modifier.padding(12.dp),
+            verticalAlignment = Alignment.Top
+        ) {
+            Text("🔒", fontSize = 14.sp)
+            Spacer(Modifier.width(8.dp))
+            Column {
+                Text(
+                    "심층 복구에는 루트 권한이 필요합니다",
+                    color      = TextPrimary,
+                    fontSize   = 13.sp,
+                    fontWeight = FontWeight.SemiBold
+                )
+                Text(
+                    "Magisk 또는 KernelSU로 루트를 설정하면\n완전 삭제된 파일도 복구할 수 있습니다.",
+                    color      = TextSecond,
+                    fontSize   = 11.sp,
+                    lineHeight = 16.sp
                 )
             }
         }

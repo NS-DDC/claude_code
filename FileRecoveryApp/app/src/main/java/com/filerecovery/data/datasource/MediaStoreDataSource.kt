@@ -19,45 +19,28 @@ import java.util.UUID
 import kotlin.coroutines.coroutineContext
 
 /**
- * MediaStore 쿼리 — 삭제된 파일만 검색
+ * MediaStore 쿼리 — 사용자가 삭제한 파일만 검색
+ *
+ * [v1.3.3 수정]
+ * ✅ RELATIVE_PATH를 별도 쿼리로 분리 (projection에 넣으면 삼성 OEM 쿼리 실패 가능)
+ *    → 1차: IS_TRASHED 쿼리로 삭제 파일 목록 확보
+ *    → 2차: 결과에서 앱 데이터 경로 필터링 (RELATIVE_PATH 별도 조회)
+ * ✅ 쿼리 실패 시 단계별 로그 + 0건 반환 (앱 크래시 방지)
  *
  * [삭제 파일 탐지 전략 — 3단계 폴백]
- *
- * ┌───────────────────────────────────────────────────────────────┐
- * │ Android 11+ (API 30) — 3단계 폴백                              │
- * │                                                               │
- * │ 1단계: MATCH_ONLY (SQL selection 없이) + IS_TRASHED 코드 검증   │
- * │   → 삼성 One UI 우선 권장 방식                                  │
- * │   → QUERY_ARG_SQL_SELECTION 없이 단독 사용 시 Samsung OEM에서   │
- * │     가장 안정적으로 동작                                         │
- * │                                                               │
- * │ 2단계: MATCH_INCLUDE + IS_TRASHED 코드 필터                     │
- * │   → 1단계가 빈 결과일 때 시도                                    │
- * │   → MIME 필터도 코드에서 처리 (Bundle SQL selection 회피)        │
- * │                                                               │
- * │ 3단계: IS_TRASHED=1 직접 WHERE selection (Bundle 미사용)        │
- * │   → 1·2단계 모두 실패 시 최후 수단                               │
- * │   → Bundle QUERY_ARG_MATCH_TRASHED를 무시하는 OEM 대응          │
- * └───────────────────────────────────────────────────────────────┘
- *
- * ┌─────────────────────────────────────────────────────────┐
- * │ Android 10 이하                                         │
- * │ DATA 컬럼으로 파일 경로 획득 후 File.exists() 확인       │
- * │ → DB 레코드 O + 실제 파일 X = 삭제된 파일               │
- * └─────────────────────────────────────────────────────────┘
- *
- * [삼성 One UI 핵심 이슈]
- * - QUERY_ARG_MATCH_TRASHED + QUERY_ARG_SQL_SELECTION 동시 사용 시
- *   삼성 OEM MediaStore에서 MATCH 플래그가 무시되는 버그 존재
- * - MATCH_ONLY가 MATCH_INCLUDE + IS_TRASHED 필터보다 삼성에서 더 안정적
- * - One UI 5+ (Android 13) 30일 휴지통도 IS_TRASHED 기반
+ * 1단계: MATCH_ONLY (삼성 One UI 최우선)
+ * 2단계: MATCH_INCLUDE + IS_TRASHED=1 엄격 필터
+ * 3단계: WHERE IS_TRASHED=1 직접 쿼리 (최후 수단)
  */
 class MediaStoreDataSource(private val context: Context) {
 
     companion object {
         private const val TAG = "MediaStoreScan"
 
-        // IS_TRASHED 컬럼 읽기를 위해 projection에 항상 포함
+        /**
+         * 기본 projection — RELATIVE_PATH 미포함 (안정성 우선)
+         * 삼성 OEM에서 RELATIVE_PATH + MATCH_TRASHED 조합 시 쿼리 실패 사례 있음
+         */
         private val TRASHED_PROJECTION = arrayOf(
             MediaStore.MediaColumns._ID,
             MediaStore.MediaColumns.DISPLAY_NAME,
@@ -67,6 +50,10 @@ class MediaStoreDataSource(private val context: Context) {
             MediaStore.MediaColumns.IS_TRASHED,
         )
     }
+
+    // ═══════════════════════════════════════════════════════════════════
+    // 공개 스캔 메서드
+    // ═══════════════════════════════════════════════════════════════════
 
     suspend fun scanImages(): List<RecoverableFile> = withContext(Dispatchers.IO) {
         queryDeletedFiles(
@@ -118,9 +105,9 @@ class MediaStoreDataSource(private val context: Context) {
         }
     }
 
-    // ─────────────────────────────────────────────────────────────────────
+    // ═══════════════════════════════════════════════════════════════════
     // Android 11+: IS_TRASHED 기반 3단계 폴백
-    // ─────────────────────────────────────────────────────────────────────
+    // ═══════════════════════════════════════════════════════════════════
 
     @RequiresApi(Build.VERSION_CODES.R)
     private suspend fun queryTrashedFiles(
@@ -129,42 +116,47 @@ class MediaStoreDataSource(private val context: Context) {
         mimeTypes: List<String>?
     ): List<RecoverableFile> {
         val seenIds = mutableSetOf<Long>()
+        val allResults = mutableListOf<RecoverableFile>()
 
-        // 1단계: MATCH_ONLY — SQL selection 없이 단독 사용 (삼성 One UI 최우선)
-        // 핵심: Bundle에 QUERY_ARG_SQL_SELECTION을 넣지 않아야 삼성 OEM에서 정상 동작
-        val s1 = queryWithBundle(
-            externalUri, category, mimeTypes,
-            matchMode = MediaStore.MATCH_ONLY,
-            seenIds = seenIds
-        )
-        Log.d(TAG, "${category.name} 1단계(MATCH_ONLY): ${s1.size}개")
-        if (s1.isNotEmpty()) return s1
+        // 1단계: MATCH_ONLY (삼성 One UI 최우선)
+        try {
+            val s1 = queryWithBundle(externalUri, category, mimeTypes,
+                matchMode = MediaStore.MATCH_ONLY, seenIds = seenIds)
+            allResults += s1
+            Log.i(TAG, "✅ ${category.name} 1단계(MATCH_ONLY): ${s1.size}개")
+        } catch (e: Exception) {
+            Log.e(TAG, "❌ ${category.name} 1단계 실패: ${e.message}")
+        }
 
-        // 2단계: MATCH_INCLUDE + IS_TRASHED 코드 필터
-        // MATCH_ONLY가 0건일 때 시도 (일부 AOSP 빌드 대응)
-        val s2 = queryWithBundle(
-            externalUri, category, mimeTypes,
-            matchMode = MediaStore.MATCH_INCLUDE,
-            seenIds = seenIds
-        )
-        Log.d(TAG, "${category.name} 2단계(MATCH_INCLUDE): ${s2.size}개")
-        if (s2.isNotEmpty()) return s2
+        // 2단계: MATCH_INCLUDE + IS_TRASHED=1 엄격 필터
+        try {
+            val s2 = queryWithBundle(externalUri, category, mimeTypes,
+                matchMode = MediaStore.MATCH_INCLUDE, seenIds = seenIds)
+            allResults += s2
+            Log.i(TAG, "✅ ${category.name} 2단계(MATCH_INCLUDE): +${s2.size}개")
+        } catch (e: Exception) {
+            Log.e(TAG, "❌ ${category.name} 2단계 실패: ${e.message}")
+        }
 
-        // 3단계: Bundle 없이 IS_TRASHED=1 직접 WHERE 절 사용
-        // Bundle QUERY_ARG를 완전히 무시하는 OEM 최후 수단
-        val s3 = queryTrashedDirectSelection(externalUri, category, mimeTypes, seenIds)
-        Log.d(TAG, "${category.name} 3단계(직접쿼리): ${s3.size}개")
-        return s3
+        // 3단계: WHERE IS_TRASHED=1 직접 쿼리
+        try {
+            val s3 = queryTrashedDirectSelection(externalUri, category, mimeTypes, seenIds)
+            allResults += s3
+            Log.i(TAG, "✅ ${category.name} 3단계(직접쿼리): +${s3.size}개")
+        } catch (e: Exception) {
+            Log.e(TAG, "❌ ${category.name} 3단계 실패: ${e.message}")
+        }
+
+        Log.i(TAG, "📊 ${category.name} 최종: ${allResults.size}개")
+        return filterAppTempFiles(allResults, externalUri)
     }
 
     /**
-     * Bundle + MATCH_ONLY 또는 MATCH_INCLUDE 방식 쿼리
+     * Bundle + MATCH_ONLY / MATCH_INCLUDE 쿼리
      *
-     * [삼성 One UI 호환 핵심 원칙]
-     * Bundle에 QUERY_ARG_SQL_SELECTION을 넣지 않음.
-     * 삼성 OEM에서 QUERY_ARG_MATCH_TRASHED + QUERY_ARG_SQL_SELECTION 동시 사용 시
-     * MATCH 플래그가 무시되어 휴지통 항목이 0건 반환되는 버그가 있음.
-     * MIME 타입 필터는 커서 읽기 후 코드에서 처리.
+     * [IS_TRASHED 필터]
+     * MATCH_ONLY:   쿼리 자체가 trashed만 반환 → isTrashed==0만 스킵
+     * MATCH_INCLUDE: 전부 반환 → isTrashed!=1이면 스킵 (엄격)
      */
     @RequiresApi(Build.VERSION_CODES.R)
     private suspend fun queryWithBundle(
@@ -182,68 +174,80 @@ class MediaStoreDataSource(private val context: Context) {
                 ContentResolver.QUERY_ARG_SQL_SORT_ORDER,
                 "${MediaStore.MediaColumns.DATE_MODIFIED} DESC"
             )
-            // ✅ QUERY_ARG_SQL_SELECTION 미포함 — 삼성 One UI OEM 버그 회피
         }
 
-        context.contentResolver.query(externalUri, TRASHED_PROJECTION, queryArgs, null)
-            ?.use { cursor ->
-                val idCol      = cursor.getColumnIndex(MediaStore.MediaColumns._ID)
-                val nameCol    = cursor.getColumnIndex(MediaStore.MediaColumns.DISPLAY_NAME)
-                val sizeCol    = cursor.getColumnIndex(MediaStore.MediaColumns.SIZE)
-                val dateCol    = cursor.getColumnIndex(MediaStore.MediaColumns.DATE_MODIFIED)
-                val mimeCol    = cursor.getColumnIndex(MediaStore.MediaColumns.MIME_TYPE)
-                val trashedCol = cursor.getColumnIndex(MediaStore.MediaColumns.IS_TRASHED)
+        val cursor = context.contentResolver.query(
+            externalUri, TRASHED_PROJECTION, queryArgs, null
+        )
 
-                if (idCol < 0 || nameCol < 0) return@use
+        if (cursor == null) {
+            Log.w(TAG, "${category.name} Bundle 쿼리 cursor=null (matchMode=$matchMode)")
+            return results
+        }
 
-                while (cursor.moveToNext()) {
-                    coroutineContext.ensureActive()
+        cursor.use { c ->
+            val idCol      = c.getColumnIndex(MediaStore.MediaColumns._ID)
+            val nameCol    = c.getColumnIndex(MediaStore.MediaColumns.DISPLAY_NAME)
+            val sizeCol    = c.getColumnIndex(MediaStore.MediaColumns.SIZE)
+            val dateCol    = c.getColumnIndex(MediaStore.MediaColumns.DATE_MODIFIED)
+            val mimeCol    = c.getColumnIndex(MediaStore.MediaColumns.MIME_TYPE)
+            val trashedCol = c.getColumnIndex(MediaStore.MediaColumns.IS_TRASHED)
 
-                    val id = cursor.getLong(idCol)
-                    if (!seenIds.add(id)) continue  // 전략 간 중복 제거
-
-                    // IS_TRASHED 검증: 컬럼 존재 시 반드시 1이어야 통과
-                    // MATCH_ONLY여도 삼성 OEM이 비-trashed 항목을 섞어 반환할 수 있어 재확인
-                    val isTrashed = if (trashedCol >= 0) cursor.getInt(trashedCol) else -1
-                    if (isTrashed == 0) continue   // 명확히 삭제 안 됨 → 스킵
-
-                    // MIME 타입 코드 필터 (문서 카테고리 전용, Bundle SQL selection 회피)
-                    if (mimeTypes != null && mimeCol >= 0) {
-                        val mime = cursor.getString(mimeCol) ?: continue
-                        if (mime !in mimeTypes) continue
-                    }
-
-                    val name     = cursor.getString(nameCol) ?: continue
-                    val size     = if (sizeCol >= 0) cursor.getLong(sizeCol) else 0L
-                    val modified = if (dateCol >= 0) cursor.getLong(dateCol) * 1000L else 0L
-                    val ext      = name.substringAfterLast('.', "").lowercase()
-                    val itemUri  = ContentUris.withAppendedId(externalUri, id)
-
-                    val headerIntact = size > 1024L
-                    results += RecoverableFile(
-                        id             = UUID.randomUUID().toString(),
-                        name           = name,
-                        path           = "",
-                        uri            = itemUri,
-                        size           = size,
-                        lastModified   = modified,
-                        category       = category,
-                        extension      = ext,
-                        recoveryChance = RecoveryAnalyzer.calcChance(size, headerIntact),
-                        headerIntact   = headerIntact
-                    )
-                }
+            if (idCol < 0 || nameCol < 0) {
+                Log.w(TAG, "${category.name} 필수 컬럼 누락 (id=$idCol, name=$nameCol)")
+                return results
             }
+
+            Log.d(TAG, "${category.name} cursor.count=${c.count} (matchMode=$matchMode)")
+
+            while (c.moveToNext()) {
+                coroutineContext.ensureActive()
+
+                val id = c.getLong(idCol)
+                if (!seenIds.add(id)) continue
+
+                // IS_TRASHED 필터
+                val isTrashed = if (trashedCol >= 0) c.getInt(trashedCol) else -1
+
+                if (matchMode == MediaStore.MATCH_INCLUDE) {
+                    if (isTrashed != 1) continue
+                } else {
+                    if (isTrashed == 0) continue
+                }
+
+                // MIME 타입 필터
+                if (mimeTypes != null && mimeCol >= 0) {
+                    val mime = c.getString(mimeCol) ?: continue
+                    if (mime !in mimeTypes) continue
+                }
+
+                val name     = c.getString(nameCol) ?: continue
+                val size     = if (sizeCol >= 0) c.getLong(sizeCol) else 0L
+                val modified = if (dateCol >= 0) c.getLong(dateCol) * 1000L else 0L
+                val ext      = name.substringAfterLast('.', "").lowercase()
+                val itemUri  = ContentUris.withAppendedId(externalUri, id)
+
+                val headerIntact = size > 1024L
+                results += RecoverableFile(
+                    id             = UUID.randomUUID().toString(),
+                    name           = name,
+                    path           = "",       // MediaStore 결과는 path 없음 (URI로 접근)
+                    uri            = itemUri,
+                    size           = size,
+                    lastModified   = modified,
+                    category       = category,
+                    extension      = ext,
+                    recoveryChance = RecoveryAnalyzer.calcChance(size, headerIntact),
+                    headerIntact   = headerIntact
+                )
+            }
+        }
 
         return results
     }
 
     /**
-     * 3단계 폴백: Bundle 없이 WHERE IS_TRASHED=1 직접 사용
-     *
-     * 표준 Android에서는 기본 MediaStore 쿼리가 trashed 항목을 자동 제외하므로
-     * 이 방식이 작동하지 않을 수 있지만, Bundle QUERY_ARG를 완전히 무시하는
-     * 일부 삼성/OEM 빌드에서 마지막 수단으로 시도.
+     * 3단계: Bundle 없이 WHERE IS_TRASHED=1
      */
     @RequiresApi(Build.VERSION_CODES.R)
     @Suppress("DEPRECATION")
@@ -263,71 +267,150 @@ class MediaStoreDataSource(private val context: Context) {
                             else isTrashedCond
         val selectionArgs = mimeTypes?.toTypedArray()
 
-        try {
+        val cursor = try {
             context.contentResolver.query(
-                externalUri,
-                TRASHED_PROJECTION,
-                selection,
-                selectionArgs,
+                externalUri, TRASHED_PROJECTION, selection, selectionArgs,
                 "${MediaStore.MediaColumns.DATE_MODIFIED} DESC"
-            )?.use { cursor ->
-                val idCol      = cursor.getColumnIndex(MediaStore.MediaColumns._ID)
-                val nameCol    = cursor.getColumnIndex(MediaStore.MediaColumns.DISPLAY_NAME)
-                val sizeCol    = cursor.getColumnIndex(MediaStore.MediaColumns.SIZE)
-                val dateCol    = cursor.getColumnIndex(MediaStore.MediaColumns.DATE_MODIFIED)
-                val trashedCol = cursor.getColumnIndex(MediaStore.MediaColumns.IS_TRASHED)
-
-                if (idCol < 0 || nameCol < 0) return@use
-
-                while (cursor.moveToNext()) {
-                    coroutineContext.ensureActive()
-
-                    val id = cursor.getLong(idCol)
-                    if (!seenIds.add(id)) continue
-
-                    // 이중 검증 (selection이 무시된 경우 대비)
-                    val isTrashed = if (trashedCol >= 0) cursor.getInt(trashedCol) else -1
-                    if (isTrashed == 0) continue
-
-                    val name     = cursor.getString(nameCol) ?: continue
-                    val size     = if (sizeCol >= 0) cursor.getLong(sizeCol) else 0L
-                    val modified = if (dateCol >= 0) cursor.getLong(dateCol) * 1000L else 0L
-                    val ext      = name.substringAfterLast('.', "").lowercase()
-                    val itemUri  = ContentUris.withAppendedId(externalUri, id)
-
-                    val headerIntact = size > 1024L
-                    results += RecoverableFile(
-                        id             = UUID.randomUUID().toString(),
-                        name           = name,
-                        path           = "",
-                        uri            = itemUri,
-                        size           = size,
-                        lastModified   = modified,
-                        category       = category,
-                        extension      = ext,
-                        recoveryChance = RecoveryAnalyzer.calcChance(size, headerIntact),
-                        headerIntact   = headerIntact
-                    )
-                }
-            }
+            )
         } catch (e: Exception) {
-            Log.w(TAG, "${category.name} 직접 IS_TRASHED 쿼리 실패: ${e.message}")
+            Log.w(TAG, "${category.name} 직접 쿼리 실패: ${e.message}")
+            null
+        }
+
+        cursor?.use { c ->
+            val idCol      = c.getColumnIndex(MediaStore.MediaColumns._ID)
+            val nameCol    = c.getColumnIndex(MediaStore.MediaColumns.DISPLAY_NAME)
+            val sizeCol    = c.getColumnIndex(MediaStore.MediaColumns.SIZE)
+            val dateCol    = c.getColumnIndex(MediaStore.MediaColumns.DATE_MODIFIED)
+            val trashedCol = c.getColumnIndex(MediaStore.MediaColumns.IS_TRASHED)
+
+            if (idCol < 0 || nameCol < 0) return results
+
+            while (c.moveToNext()) {
+                coroutineContext.ensureActive()
+
+                val id = c.getLong(idCol)
+                if (!seenIds.add(id)) continue
+
+                val isTrashed = if (trashedCol >= 0) c.getInt(trashedCol) else -1
+                if (isTrashed == 0) continue
+
+                val name     = c.getString(nameCol) ?: continue
+                val size     = if (sizeCol >= 0) c.getLong(sizeCol) else 0L
+                val modified = if (dateCol >= 0) c.getLong(dateCol) * 1000L else 0L
+                val ext      = name.substringAfterLast('.', "").lowercase()
+                val itemUri  = ContentUris.withAppendedId(externalUri, id)
+
+                val headerIntact = size > 1024L
+                results += RecoverableFile(
+                    id             = UUID.randomUUID().toString(),
+                    name           = name,
+                    path           = "",
+                    uri            = itemUri,
+                    size           = size,
+                    lastModified   = modified,
+                    category       = category,
+                    extension      = ext,
+                    recoveryChance = RecoveryAnalyzer.calcChance(size, headerIntact),
+                    headerIntact   = headerIntact
+                )
+            }
         }
 
         return results
     }
 
-    // ─────────────────────────────────────────────────────────────────────
-    // Android 10 이하: DB 레코드 + 파일 부재 = 삭제된 파일
-    // ─────────────────────────────────────────────────────────────────────
+    // ═══════════════════════════════════════════════════════════════════
+    // 앱 임시파일 필터 — 별도 RELATIVE_PATH 조회
+    // ═══════════════════════════════════════════════════════════════════
 
     /**
-     * Android 10 이하
+     * 결과 리스트에서 앱 데이터 경로(Android/data/, Android/media/) 파일 제거
      *
-     * DATA 컬럼으로 실제 파일 경로를 가져온 뒤,
-     * File.exists()로 실제 파일이 디스크에 있는지 확인.
-     * → DB 레코드만 남고 파일은 삭제된 = 복구 대상
+     * [안전 설계]
+     * RELATIVE_PATH를 메인 쿼리 projection에 넣지 않음 (삼성 OEM 호환)
+     * 대신 결과의 각 URI에서 ID를 추출 → 별도 쿼리로 RELATIVE_PATH 확인
+     * RELATIVE_PATH 조회 실패 시 → 필터 안 함 (결과 유지)
      */
+    @RequiresApi(Build.VERSION_CODES.R)
+    private fun filterAppTempFiles(
+        files: List<RecoverableFile>,
+        externalUri: Uri
+    ): List<RecoverableFile> {
+        if (files.isEmpty()) return files
+
+        // 결과에서 MediaStore ID 추출
+        val idToFile = mutableMapOf<Long, RecoverableFile>()
+        files.forEach { file ->
+            val fileUri = file.uri ?: return@forEach
+            try {
+                val id = ContentUris.parseId(fileUri)
+                idToFile[id] = file
+            } catch (_: Exception) { /* URI 파싱 실패 → 필터 대상에서 제외 */ }
+        }
+
+        if (idToFile.isEmpty()) return files
+
+        // 앱 데이터 경로 ID 수집 (별도 쿼리)
+        val appDataIds = mutableSetOf<Long>()
+        try {
+            // RELATIVE_PATH만 조회하는 경량 쿼리
+            val relPathProjection = arrayOf(
+                MediaStore.MediaColumns._ID,
+                MediaStore.MediaColumns.RELATIVE_PATH,
+            )
+
+            // ID 리스트로 WHERE 조건 구성
+            val ids = idToFile.keys.toList()
+            // 대량 IN 쿼리 방지 — 500건씩 배치
+            ids.chunked(500).forEach { batch ->
+                val placeholders = batch.joinToString(",") { "?" }
+                val selection = "${MediaStore.MediaColumns._ID} IN ($placeholders)"
+                val selectionArgs = batch.map { it.toString() }.toTypedArray()
+
+                // MATCH_INCLUDE로 trashed 항목도 포함
+                val queryArgs = Bundle().apply {
+                    putInt(MediaStore.QUERY_ARG_MATCH_TRASHED, MediaStore.MATCH_INCLUDE)
+                    putString(ContentResolver.QUERY_ARG_SQL_SELECTION, selection)
+                    putStringArray(ContentResolver.QUERY_ARG_SQL_SELECTION_ARGS, selectionArgs)
+                }
+
+                context.contentResolver.query(externalUri, relPathProjection, queryArgs, null)
+                    ?.use { cursor ->
+                        val idCol = cursor.getColumnIndex(MediaStore.MediaColumns._ID)
+                        val rpCol = cursor.getColumnIndex(MediaStore.MediaColumns.RELATIVE_PATH)
+                        if (idCol < 0 || rpCol < 0) return@use
+
+                        while (cursor.moveToNext()) {
+                            val id = cursor.getLong(idCol)
+                            val rp = (cursor.getString(rpCol) ?: "").lowercase()
+                            if (rp.startsWith("android/")) {
+                                appDataIds.add(id)
+                            }
+                        }
+                    }
+            }
+        } catch (e: Exception) {
+            // RELATIVE_PATH 조회 실패 → 필터 없이 전체 결과 반환 (안전)
+            Log.w(TAG, "RELATIVE_PATH 필터 실패 (결과 유지): ${e.message}")
+            return files
+        }
+
+        if (appDataIds.isNotEmpty()) {
+            Log.i(TAG, "🚫 앱 임시파일 ${appDataIds.size}개 제외")
+        }
+
+        return files.filter { file ->
+            val fileUri = file.uri ?: return@filter true
+            val id = try { ContentUris.parseId(fileUri) } catch (_: Exception) { return@filter true }
+            id !in appDataIds
+        }
+    }
+
+    // ═══════════════════════════════════════════════════════════════════
+    // Android 10 이하: DB 레코드 + 파일 부재 = 삭제된 파일
+    // ═══════════════════════════════════════════════════════════════════
+
     @Suppress("DEPRECATION")
     private suspend fun queryOrphanedFiles(
         externalUri: Uri,
@@ -342,7 +425,7 @@ class MediaStoreDataSource(private val context: Context) {
             MediaStore.MediaColumns.SIZE,
             MediaStore.MediaColumns.DATE_MODIFIED,
             MediaStore.MediaColumns.MIME_TYPE,
-            MediaStore.MediaColumns.DATA
+            MediaStore.MediaColumns.DATA,
         )
 
         val selection = mimeTypes?.joinToString(" OR ") {
@@ -373,14 +456,14 @@ class MediaStoreDataSource(private val context: Context) {
                 val ext      = name.substringAfterLast('.', "").lowercase()
                 val uri      = ContentUris.withAppendedId(externalUri, id)
 
-                // 실제 파일이 디스크에 존재하면 = 삭제 안 됨 → 스킵
+                // 실제 파일이 디스크에 존재 → 삭제 안 됨 → 스킵
                 if (filePath.isNotEmpty() && java.io.File(filePath).exists()) continue
-                // DATA가 비어있으면 판단 불가 → 스킵 (오탐 방지)
                 if (filePath.isEmpty()) continue
 
-                val headerIntact = size > 1024L
-                val chance       = RecoveryAnalyzer.calcChance(size, headerIntact)
+                // 앱 데이터 경로 필터
+                if (filePath.contains("/Android/data/") || filePath.contains("/Android/media/")) continue
 
+                val headerIntact = size > 1024L
                 results += RecoverableFile(
                     id             = UUID.randomUUID().toString(),
                     name           = name,
@@ -390,13 +473,13 @@ class MediaStoreDataSource(private val context: Context) {
                     lastModified   = modified,
                     category       = category,
                     extension      = ext,
-                    recoveryChance = chance,
+                    recoveryChance = RecoveryAnalyzer.calcChance(size, headerIntact),
                     headerIntact   = headerIntact
                 )
             }
         }
 
-        Log.d(TAG, "${category.name} orphaned: ${results.size}개 발견")
+        Log.d(TAG, "${category.name} orphaned: ${results.size}개")
         return results
     }
 }

@@ -2,7 +2,7 @@ package com.filerecovery.data.repository
 
 import com.filerecovery.data.datasource.FileSystemDataSource
 import com.filerecovery.data.datasource.MediaStoreDataSource
-import com.filerecovery.data.datasource.ThumbnailCacheDataSource
+import com.filerecovery.data.datasource.RawDiskDataSource
 import com.filerecovery.domain.model.FileCategory
 import com.filerecovery.domain.model.RecoverableFile
 import com.filerecovery.domain.model.ScanProgress
@@ -10,30 +10,36 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.channelFlow
 import kotlinx.coroutines.flow.flowOn
 
 /**
- * 3가지 스캔 소스를 병렬로 실행하고 Flow로 실시간 진행 상황을 방출합니다.
+ * 스캔 파이프라인 — MediaStore + 파일시스템(OEM 휴지통) + Raw 디스크(루트) 3단계
  *
- * [수정 사항]
- * - ✅ flow → channelFlow (withContext 내부 emit 안전성 확보)
- * - Uri 기반 중복 제거 (path가 빈 문자열인 MediaStore 결과 대응)
- * - 파일 시스템 스캔 시 일정 간격으로만 emit (O(n²) → O(n) 메모리 최적화)
- * - enum 직접 비교 (name String 비교 → enum 비교)
+ * [v1.4 변경]
+ * ✅ 3단계 추가: RawDiskDataSource — 루트 권한 Raw 디스크 카빙
+ *    → 30일 경과 완전 삭제 파일 복구 가능
+ *    → 루트 가용 시에만 실행
+ *
+ * [스캔 순서]
+ * 1단계: MediaStore IS_TRASHED 4채널 병렬 (사진/동영상/음악/문서)
+ *        → 갤러리·파일관리자에서 삭제한 파일 (가장 신뢰도 높음)
+ *        → RELATIVE_PATH 필터로 앱 임시데이터(카톡/인스타 등) 자동 제외
+ * 2단계: 파일시스템 OEM 휴지통 디렉토리 순회
+ *        → 삼성/샤오미/OPPO/화웨이 등 전용 Trash 폴더
+ * 3단계: Raw 디스크 카빙 (루트 전용)
+ *        → 블록 디바이스 직접 스캔, Magic Number 기반 파일 복구
  */
 class ScanRepository(
     private val mediaStore: MediaStoreDataSource,
-    private val thumbnailCache: ThumbnailCacheDataSource,
-    private val fileSystem: FileSystemDataSource
+    private val fileSystem: FileSystemDataSource,
+    private val rawDisk: RawDiskDataSource? = null   // 루트 가용 시에만 주입
 ) {
 
     companion object {
         private const val FS_EMIT_INTERVAL = 50
     }
 
-    // ✅ FIX: channelFlow 사용 — withContext 내부에서 안전하게 send 가능
     fun scanAll(): Flow<Pair<ScanProgress, List<RecoverableFile>>> = channelFlow {
         val accumulated = mutableListOf<RecoverableFile>()
         val seenUris  = mutableSetOf<String>()
@@ -41,6 +47,7 @@ class ScanRepository(
         var progress = ScanProgress()
 
         // -- 1단계: MediaStore 4채널 병렬 쿼리 --
+        val mediaStoreCount: Int
         coroutineScope {
             val imgDeferred = async(Dispatchers.IO) { mediaStore.scanImages() }
             val vidDeferred = async(Dispatchers.IO) { mediaStore.scanVideos() }
@@ -61,6 +68,8 @@ class ScanRepository(
                 }
             }
 
+            mediaStoreCount = accumulated.size
+
             progress = progress.copy(
                 scannedCount  = accumulated.size,
                 imageCount    = accumulated.count { it.category == FileCategory.IMAGE },
@@ -71,26 +80,8 @@ class ScanRepository(
             send(Pair(progress, accumulated.toList()))
         }
 
-        // -- 2단계: 썸네일 캐시 스캔 --
-        coroutineScope {
-            val thumbFiles = async(Dispatchers.IO) { thumbnailCache.scanThumbnailCaches() }.await()
-
-            val newThumbs = thumbFiles.filter { file ->
-                val pathKey = file.path
-                val uriKey  = file.uri?.toString() ?: ""
-                pathKey.isNotEmpty() && seenPaths.add(pathKey) &&
-                    (uriKey.isEmpty() || seenUris.add(uriKey))
-            }
-
-            accumulated += newThumbs
-            progress = progress.copy(
-                scannedCount = accumulated.size,
-                imageCount   = progress.imageCount + newThumbs.size
-            )
-            send(Pair(progress, accumulated.toList()))
-        }
-
-        // -- 3단계: 파일 시스템 순회 (배치 emit) --
+        // -- 2단계: 파일시스템 OEM 휴지통 순회 (배치 emit) --
+        val fsStartCount = accumulated.size
         var fsAddedCount = 0
         fileSystem.scanAll { file ->
             val pathKey = file.path
@@ -111,8 +102,46 @@ class ScanRepository(
                 }
             }
         }
+        val fsCount = accumulated.size - fsStartCount
 
-        // 나머지 파일 최종 emit + 완료 플래그
-        send(Pair(progress.copy(isFinished = true), accumulated.toList()))
+        // -- 스캔 완료 → 경고 메시지 생성 --
+        val warnings = buildList {
+            if (!fileSystem.hasFullAccess) {
+                add("⚠️ '전체 파일 접근' 권한 미허용 — 심층 스캔이 제한됩니다. 설정에서 권한을 허용하면 더 많은 파일을 찾을 수 있습니다.")
+            }
+            if (mediaStoreCount == 0 && fsCount == 0) {
+                add("휴지통에서 삭제된 파일을 찾지 못했습니다. '심층 스캔'으로 디스크에서 직접 복구를 시도하세요.")
+            }
+            if (mediaStoreCount == 0) {
+                add("MediaStore 휴지통에서 파일을 찾지 못했습니다. 갤러리 앱의 '최근 삭제' 폴더를 확인해보세요.")
+            }
+        }
+
+        // 최종 emit + 완료 플래그
+        send(Pair(
+            progress.copy(isFinished = true, warnings = warnings),
+            accumulated.toList()
+        ))
     }.flowOn(Dispatchers.IO)
+
+    /**
+     * [v1.4] 심층 디스크 스캔 (루트 권한 필요)
+     *
+     * 기존 scanAll()과 독립적으로 실행됩니다.
+     * Raw 블록 디바이스를 직접 스캔하여 삭제된 파일을 카빙합니다.
+     *
+     * @param existingFiles 기존 스캔 결과 (중복 방지용)
+     * @return 심층 스캔 진행률 + 발견 파일
+     */
+    fun deepScan(existingFiles: List<RecoverableFile> = emptyList()): Flow<Pair<ScanProgress, List<RecoverableFile>>>? {
+        val ds = rawDisk ?: return null
+
+        val existingPaths = existingFiles.mapNotNull { it.path.takeIf { p -> p.isNotEmpty() } }.toSet()
+
+        return channelFlow {
+            ds.scan(existingPaths).collect { result ->
+                send(Pair(result.progress, result.files))
+            }
+        }.flowOn(Dispatchers.IO)
+    }
 }

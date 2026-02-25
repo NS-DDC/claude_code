@@ -1,5 +1,4 @@
 """Auto-labeling engine that runs model inference in a background thread."""
-
 from __future__ import annotations
 
 import logging
@@ -10,7 +9,7 @@ import numpy as np
 from PySide6.QtCore import QThread, Signal
 
 from core.label_manager import LabelItem
-from core.model_manager import ModelManager
+from core.model_manager import ModelManager, DEFAULT_INFER_SIZE
 
 logger = logging.getLogger(__name__)
 
@@ -85,6 +84,21 @@ def _xyxy_to_four_corners(
 class AutoLabelWorker(QThread):
     """Background worker that runs auto-labeling on a list of images.
 
+    Inference pipeline
+    ------------------
+    1. Each image is passed to the model at ``infer_size`` × ``infer_size``
+       resolution (letter-boxed for YOLO / RT-DETR).
+    2. Raw model detections with confidence < ``confidence`` are discarded
+       inside the model (NMS threshold for YOLO; per-pixel threshold for Keras).
+    3. A secondary **score threshold** (``score_threshold``) is then applied in
+       post-processing: any detection whose confidence score is below this value
+       is dropped before creating a ``LabelItem``.  Setting
+       ``score_threshold > confidence`` lets you run the model with a relaxed
+       initial filter while still keeping only high-confidence results.
+    4. All bounding-box and polygon coordinates are expressed in the
+       **original image** pixel space (Ultralytics back-projects automatically;
+       Keras mask outputs are scaled here).
+
     Signals:
         progress(int, int): ``(current_index, total_count)``
         image_done(str, list): ``(image_path, list_of_LabelItem)``
@@ -102,12 +116,34 @@ class AutoLabelWorker(QThread):
         model_manager: ModelManager,
         image_paths: list[str],
         confidence: float = 0.25,
+        score_threshold: float = 0.50,
+        infer_size: int = DEFAULT_INFER_SIZE,
         parent: Optional[QThread] = None,
     ) -> None:
+        """Initialise the worker.
+
+        Args:
+            model_manager: Loaded model manager instance.
+            image_paths: Ordered list of image file paths to process.
+            confidence: Initial confidence threshold forwarded to the model
+                        (NMS threshold for YOLO; pixel probability floor for
+                        Keras segmentation).
+            score_threshold: Post-processing score filter.  Detections whose
+                             per-detection confidence is below this value are
+                             discarded after model inference.  Must be in
+                             ``[0, 1]``.  Typically set >= ``confidence``.
+            infer_size: Inference image size in pixels (square).  Images are
+                        resized to this resolution before being fed to
+                        YOLO / RT-DETR.  Coordinates are back-projected to the
+                        original image space automatically.  Default: 480.
+            parent: Optional Qt parent object.
+        """
         super().__init__(parent)
         self._model_manager = model_manager
         self._image_paths = list(image_paths)
         self._confidence = confidence
+        self._score_threshold = max(confidence, score_threshold)
+        self._infer_size = infer_size
         self._abort = False
 
     # -- Control -------------------------------------------------------------
@@ -149,24 +185,40 @@ class AutoLabelWorker(QThread):
         image_path: str,
         class_names: dict[int, str],
     ) -> list[LabelItem]:
-        """Run inference on a single image and return labels."""
-        results = self._model_manager.predict(image_path, self._confidence)
+        """Run inference on a single image and return labels.
+
+        Images are inferred at ``self._infer_size`` × ``self._infer_size``.
+        Ultralytics automatically back-projects bbox / mask coordinates to the
+        original image resolution, so all returned ``LabelItem`` coordinates
+        are in original pixel space.
+        """
+        results = self._model_manager.predict(
+            image_path, self._confidence, self._infer_size
+        )
         if results is None:
             return []
 
-        # Handle Keras model results (dict with 'model_type' key)
+        # Handle Keras model results (dict with 'model_type' key).
         if isinstance(results, dict) and results.get("model_type") == "KERAS":
             return self._process_keras_results(results, class_names)
 
         labels: list[LabelItem] = []
 
         for result in results:
+            orig_shape = result.orig_shape  # (height, width) in original px
+
             # --- Bounding boxes -------------------------------------------
             if result.boxes is not None and len(result.boxes):
                 boxes = result.boxes
                 for i in range(len(boxes)):
+                    # Post-processing score filter.
+                    conf_score = float(boxes.conf[i].item())
+                    if conf_score < self._score_threshold:
+                        continue
+
                     cls_id = int(boxes.cls[i].item())
                     cls_name = class_names.get(cls_id, str(cls_id))
+                    # xyxy is already in original image coordinates.
                     x1, y1, x2, y2 = boxes.xyxy[i].tolist()
                     points = _xyxy_to_four_corners(x1, y1, x2, y2)
 
@@ -183,6 +235,12 @@ class AutoLabelWorker(QThread):
             if result.masks is not None and len(result.masks):
                 masks = result.masks
                 for i in range(len(masks)):
+                    # Post-processing score filter (same boxes tensor).
+                    if result.boxes is not None and len(result.boxes) > i:
+                        conf_score = float(result.boxes.conf[i].item())
+                        if conf_score < self._score_threshold:
+                            continue
+
                     cls_id = int(result.boxes.cls[i].item())
                     cls_name = class_names.get(cls_id, str(cls_id))
 
@@ -192,12 +250,13 @@ class AutoLabelWorker(QThread):
                         continue
 
                     # Scale polygon points from mask resolution to original
-                    # image resolution if needed.
-                    orig_shape = result.orig_shape  # (height, width)
+                    # image resolution (Ultralytics masks may be at a reduced
+                    # resolution even when imgsz is set).
                     mask_h, mask_w = mask_data.shape[:2]
-                    if (mask_h, mask_w) != tuple(orig_shape):
-                        scale_x = orig_shape[1] / mask_w
-                        scale_y = orig_shape[0] / mask_h
+                    orig_h, orig_w = orig_shape[0], orig_shape[1]
+                    if (mask_h, mask_w) != (orig_h, orig_w):
+                        scale_x = orig_w / mask_w
+                        scale_y = orig_h / mask_h
                         polygon_pts = [
                             (px * scale_x, py * scale_y)
                             for px, py in polygon_pts
@@ -222,8 +281,11 @@ class AutoLabelWorker(QThread):
         """Process Keras model predictions into LabelItem list.
 
         Handles two output formats:
-        - Segmentation: output shape (1, H, W, C) or (1, H, W) -> per-pixel masks
-        - Classification: output shape (1, N) -> whole-image class labels
+
+        - **Segmentation**: output shape ``(1, H, W, C)`` or ``(1, H, W)``
+          → per-pixel masks, up-scaled to original image size.
+        - **Classification**: output shape ``(1, N)`` → whole-image bbox
+          labels for classes whose score exceeds ``score_threshold``.
         """
         predictions = results["predictions"]
         orig_h, orig_w = results["orig_shape"]
@@ -238,17 +300,19 @@ class AutoLabelWorker(QThread):
                 num_classes = pred.shape[2]
                 for cls_id in range(num_classes):
                     channel = pred[:, :, cls_id]
-                    # Apply confidence threshold
-                    binary_mask = (channel > self._confidence).astype(np.uint8) * 255
+                    # Apply score threshold (replaces plain confidence here).
+                    binary_mask = (channel > self._score_threshold).astype(np.uint8) * 255
 
                     if binary_mask.max() == 0:
                         continue
 
-                    # Resize mask to original image size
+                    # Up-scale mask to original image size (bilinear for smooth
+                    # edges, then threshold to restore binary values).
                     mask_resized = cv2.resize(
                         binary_mask, (orig_w, orig_h),
-                        interpolation=cv2.INTER_NEAREST
+                        interpolation=cv2.INTER_LINEAR,
                     )
+                    mask_resized = (mask_resized > 127).astype(np.uint8) * 255
 
                     cls_name = class_names.get(cls_id, f"class_{cls_id}")
                     label = LabelItem(
@@ -263,12 +327,13 @@ class AutoLabelWorker(QThread):
 
             elif len(pred.shape) == 2:
                 # Single-channel segmentation: (H, W)
-                binary_mask = (pred > self._confidence).astype(np.uint8) * 255
+                binary_mask = (pred > self._score_threshold).astype(np.uint8) * 255
                 if binary_mask.max() > 0:
                     mask_resized = cv2.resize(
                         binary_mask, (orig_w, orig_h),
-                        interpolation=cv2.INTER_NEAREST
+                        interpolation=cv2.INTER_LINEAR,
                     )
+                    mask_resized = (mask_resized > 127).astype(np.uint8) * 255
                     cls_name = class_names.get(0, "class_0")
                     label = LabelItem(
                         class_id=0,
@@ -280,12 +345,12 @@ class AutoLabelWorker(QThread):
                     )
                     labels.append(label)
 
-        # Classification output: (N,) - flat class probabilities
+        # Classification output: (N,) – flat class probabilities
         elif len(pred.shape) == 1:
             for cls_id in range(len(pred)):
-                if pred[cls_id] > self._confidence:
+                if float(pred[cls_id]) >= self._score_threshold:
                     cls_name = class_names.get(cls_id, f"class_{cls_id}")
-                    # For classification, create a full-image bbox label
+                    # For classification, create a full-image bbox label.
                     points = _xyxy_to_four_corners(0, 0, orig_w, orig_h)
                     label = LabelItem(
                         class_id=cls_id,

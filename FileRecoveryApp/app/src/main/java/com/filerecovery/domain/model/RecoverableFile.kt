@@ -21,8 +21,10 @@ data class RecoverableFile(
     val extension: String,
     val recoveryChance: RecoveryChance,
     val thumbnailUri: Uri? = null,
-    val headerIntact: Boolean = false
-    // ✅ FIX: isSelected 제거 — UI 상태는 Composable 쪽에서 관리 (기존 dead code)
+    val headerIntact: Boolean = false,
+    // ✅ v1.4: 디스크 카빙 관련 필드
+    val isCarved: Boolean = false,       // true = Raw 디스크 카빙으로 발견된 파일
+    val diskOffset: Long = 0L            // 디스크 상 시작 오프셋 (바이트)
 )
 
 data class ScanProgress(
@@ -31,5 +33,11 @@ data class ScanProgress(
     val videoCount: Int = 0,
     val audioCount: Int = 0,
     val documentCount: Int = 0,
-    val isFinished: Boolean = false
+    val isFinished: Boolean = false,
+    val warnings: List<String> = emptyList(),  // ✅ 스캔 피드백 (권한 부족, 접근 거부 등)
+    // ✅ v1.4: 심층 스캔(디스크 카빙) 진행률
+    val deepScanProgress: Float = 0f,          // 0.0 ~ 1.0
+    val deepScanScannedMB: Long = 0L,          // 스캔 완료 MB
+    val deepScanTotalMB: Long = 0L,            // 전체 디스크 MB
+    val isDeepScanning: Boolean = false         // 심층 스캔 진행 중 여부
 )
