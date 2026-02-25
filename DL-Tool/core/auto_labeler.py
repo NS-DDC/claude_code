@@ -66,6 +66,73 @@ def _mask_to_polygon(
     return points
 
 
+def _simplify_polygon_pts(
+    pts: np.ndarray,
+    epsilon_ratio: float = 0.002,
+) -> list[tuple[float, float]]:
+    """Apply ``approxPolyDP`` simplification to a polygon already expressed
+    in pixel coordinates.
+
+    Unlike :func:`_mask_to_polygon`, this function works directly on the
+    coordinate array (e.g. from ``masks.xy[i]``) and **does not** perform any
+    mask-to-contour conversion.  This avoids all scaling-related noise because
+    the contour is already in the target (original image) coordinate space.
+
+    Args:
+        pts: ``np.ndarray`` of shape ``(N, 2)`` with float pixel coordinates.
+        epsilon_ratio: Fraction of the arc length used by ``approxPolyDP``.
+
+    Returns:
+        Simplified list of ``(x, y)`` tuples, or an empty list if the input
+        has fewer than 3 points.
+    """
+    if pts is None or len(pts) < 3:
+        return []
+
+    # Reshape to (N, 1, 2) as required by OpenCV.
+    c = pts.reshape(-1, 1, 2).astype(np.float32)
+    epsilon = epsilon_ratio * cv2.arcLength(c, closed=True)
+    approx = cv2.approxPolyDP(c, epsilon, closed=True)
+
+    return [(float(pt[0][0]), float(pt[0][1])) for pt in approx]
+
+
+def _upscale_prob_mask(
+    prob_map: np.ndarray,
+    target_w: int,
+    target_h: int,
+    threshold: float,
+) -> np.ndarray:
+    """Upscale a float probability map and binarise at the target resolution.
+
+    This is the noise-free approach for segmentation mask upscaling:
+    1. Resize the *float* probability map (not a binary mask) with bilinear
+       interpolation so that boundary gradients are preserved.
+    2. Apply the threshold *after* resizing so the decision boundary is
+       placed at the full target resolution.
+
+    Compared to resizing a pre-binarised mask (which amplifies staircase
+    artefacts and high-frequency boundary noise), this approach produces
+    clean, smooth edges regardless of the upscale factor.
+
+    Args:
+        prob_map: 2-D float32 array with values in ``[0, 1]``.
+        target_w: Target image width in pixels.
+        target_h: Target image height in pixels.
+        threshold: Probability cutoff for foreground.
+
+    Returns:
+        2-D uint8 binary array (foreground = 255, background = 0) at
+        ``(target_h, target_w)`` resolution.
+    """
+    prob_resized = cv2.resize(
+        prob_map.astype(np.float32),
+        (target_w, target_h),
+        interpolation=cv2.INTER_LINEAR,
+    )
+    return (prob_resized >= threshold).astype(np.uint8) * 255
+
+
 def _xyxy_to_four_corners(
     x1: float, y1: float, x2: float, y2: float
 ) -> list[tuple[float, float]]:
@@ -244,23 +311,30 @@ class AutoLabelWorker(QThread):
                     cls_id = int(result.boxes.cls[i].item())
                     cls_name = class_names.get(cls_id, str(cls_id))
 
-                    mask_data = masks.data[i].cpu().numpy()
-                    polygon_pts = _mask_to_polygon(mask_data)
+                    # --- Noise-free polygon extraction --------------------
+                    # Use masks.xy[i] instead of masks.data[i].
+                    #
+                    # masks.data[i] is the raw mask at model output resolution
+                    # (e.g. 120×120 for imgsz=480).  Extracting a contour at
+                    # that scale and then multiplying coordinates by the ratio
+                    # (orig / 120) amplifies every 1-pixel boundary irregularity
+                    # by the scale factor — this is the main source of "noisy"
+                    # polygon outlines.
+                    #
+                    # masks.xy[i] is computed by Ultralytics as follows:
+                    #   1. Upsample the float probability mask to orig resolution
+                    #      with bilinear interpolation (gradient preserved).
+                    #   2. Threshold at the full resolution.
+                    #   3. Run cv2.findContours on the full-res binary.
+                    #   4. Return pixel coordinates in original image space.
+                    #
+                    # We then apply approxPolyDP in the original space so
+                    # simplification also happens at full resolution — no
+                    # coordinate amplification at any stage.
+                    xy = masks.xy[i]  # np.ndarray (N, 2), original image space
+                    polygon_pts = _simplify_polygon_pts(xy)
                     if len(polygon_pts) < 3:
                         continue
-
-                    # Scale polygon points from mask resolution to original
-                    # image resolution (Ultralytics masks may be at a reduced
-                    # resolution even when imgsz is set).
-                    mask_h, mask_w = mask_data.shape[:2]
-                    orig_h, orig_w = orig_shape[0], orig_shape[1]
-                    if (mask_h, mask_w) != (orig_h, orig_w):
-                        scale_x = orig_w / mask_w
-                        scale_y = orig_h / mask_h
-                        polygon_pts = [
-                            (px * scale_x, py * scale_y)
-                            for px, py in polygon_pts
-                        ]
 
                     label = LabelItem(
                         class_id=cls_id,
@@ -299,20 +373,30 @@ class AutoLabelWorker(QThread):
                 # Multi-class segmentation: (H, W, C)
                 num_classes = pred.shape[2]
                 for cls_id in range(num_classes):
-                    channel = pred[:, :, cls_id]
-                    # Apply score threshold (replaces plain confidence here).
-                    binary_mask = (channel > self._score_threshold).astype(np.uint8) * 255
+                    # --- Noise-free upscaling --------------------------------
+                    # Wrong order (creates noise):
+                    #   binarise(small) → resize(binary) → re-binarise(large)
+                    # Resizing a binary [0, 255] image introduces intermediate
+                    # grey values at boundaries; re-thresholding those creates
+                    # ragged staircase edges.
+                    #
+                    # Correct order (noise-free):
+                    #   resize(float_prob) → threshold(large)
+                    # Upscaling the float probability map preserves the smooth
+                    # gradient at object boundaries so the final threshold is
+                    # applied at full resolution — no intermediate quantisation.
+                    channel = pred[:, :, cls_id]  # float [0, 1]
 
-                    if binary_mask.max() == 0:
+                    # Quick pre-check: skip if nothing exceeds threshold at
+                    # the small resolution (avoids unnecessary upscale).
+                    if float(channel.max()) < self._score_threshold:
                         continue
 
-                    # Up-scale mask to original image size (bilinear for smooth
-                    # edges, then threshold to restore binary values).
-                    mask_resized = cv2.resize(
-                        binary_mask, (orig_w, orig_h),
-                        interpolation=cv2.INTER_LINEAR,
+                    mask_out = _upscale_prob_mask(
+                        channel, orig_w, orig_h, self._score_threshold
                     )
-                    mask_resized = (mask_resized > 127).astype(np.uint8) * 255
+                    if mask_out.max() == 0:
+                        continue
 
                     cls_name = class_names.get(cls_id, f"class_{cls_id}")
                     label = LabelItem(
@@ -321,29 +405,28 @@ class AutoLabelWorker(QThread):
                         label_type="mask",
                         points=[],
                         color=_color_for_class(cls_id),
-                        mask_data=mask_resized,
+                        mask_data=mask_out,
                     )
                     labels.append(label)
 
             elif len(pred.shape) == 2:
                 # Single-channel segmentation: (H, W)
-                binary_mask = (pred > self._score_threshold).astype(np.uint8) * 255
-                if binary_mask.max() > 0:
-                    mask_resized = cv2.resize(
-                        binary_mask, (orig_w, orig_h),
-                        interpolation=cv2.INTER_LINEAR,
+                channel = pred  # float [0, 1]
+                if float(channel.max()) >= self._score_threshold:
+                    mask_out = _upscale_prob_mask(
+                        channel, orig_w, orig_h, self._score_threshold
                     )
-                    mask_resized = (mask_resized > 127).astype(np.uint8) * 255
-                    cls_name = class_names.get(0, "class_0")
-                    label = LabelItem(
-                        class_id=0,
-                        class_name=cls_name,
-                        label_type="mask",
-                        points=[],
-                        color=_color_for_class(0),
-                        mask_data=mask_resized,
-                    )
-                    labels.append(label)
+                    if mask_out.max() > 0:
+                        cls_name = class_names.get(0, "class_0")
+                        label = LabelItem(
+                            class_id=0,
+                            class_name=cls_name,
+                            label_type="mask",
+                            points=[],
+                            color=_color_for_class(0),
+                            mask_data=mask_out,
+                        )
+                        labels.append(label)
 
         # Classification output: (N,) – flat class probabilities
         elif len(pred.shape) == 1:
