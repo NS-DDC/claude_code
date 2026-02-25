@@ -2,7 +2,7 @@
 
 from PySide6.QtWidgets import (
     QDialog, QVBoxLayout, QHBoxLayout, QFormLayout,
-    QLabel, QComboBox, QDoubleSpinBox, QRadioButton,
+    QLabel, QDoubleSpinBox, QSpinBox, QRadioButton,
     QPushButton, QProgressBar, QButtonGroup, QGroupBox,
     QMessageBox, QWidget,
 )
@@ -10,6 +10,7 @@ from PySide6.QtCore import Signal, Slot
 
 from i18n import tr
 from core.auto_labeler import AutoLabelWorker
+from core.model_manager import DEFAULT_INFER_SIZE
 
 
 class AutoLabelDialog(QDialog):
@@ -26,23 +27,44 @@ class AutoLabelDialog(QDialog):
 
     def _setup_ui(self):
         self.setWindowTitle(tr("auto_label_title"))
-        self.setMinimumWidth(400)
+        self.setMinimumWidth(420)
         layout = QVBoxLayout(self)
 
-        # Model info
+        # Model info + parameter form
         form = QFormLayout()
+
         self._model_label = QLabel(
-            self._model_manager.get_model_type() if self._model_manager.is_loaded else tr("auto_label_no_model")
+            self._model_manager.get_model_type()
+            if self._model_manager.is_loaded
+            else tr("auto_label_no_model")
         )
         form.addRow(tr("auto_label_model"), self._model_label)
 
-        # Confidence threshold
+        # Confidence threshold – passed directly to the model (NMS floor).
         self._confidence_spin = QDoubleSpinBox()
         self._confidence_spin.setRange(0.01, 1.0)
         self._confidence_spin.setSingleStep(0.05)
-        self._confidence_spin.setValue(0.5)
+        self._confidence_spin.setValue(0.25)
         self._confidence_spin.setDecimals(2)
+        self._confidence_spin.setToolTip(tr("auto_label_confidence_tooltip"))
         form.addRow(tr("auto_label_confidence"), self._confidence_spin)
+
+        # Score threshold – post-processing filter applied after inference.
+        self._score_spin = QDoubleSpinBox()
+        self._score_spin.setRange(0.01, 1.0)
+        self._score_spin.setSingleStep(0.05)
+        self._score_spin.setValue(0.50)
+        self._score_spin.setDecimals(2)
+        self._score_spin.setToolTip(tr("auto_label_score_threshold_tooltip"))
+        form.addRow(tr("auto_label_score_threshold"), self._score_spin)
+
+        # Inference image size – square side length for model input.
+        self._infer_size_spin = QSpinBox()
+        self._infer_size_spin.setRange(32, 1280)
+        self._infer_size_spin.setSingleStep(32)
+        self._infer_size_spin.setValue(DEFAULT_INFER_SIZE)
+        self._infer_size_spin.setToolTip(tr("auto_label_infer_size_tooltip"))
+        form.addRow(tr("auto_label_infer_size"), self._infer_size_spin)
 
         layout.addLayout(form)
 
@@ -87,20 +109,28 @@ class AutoLabelDialog(QDialog):
             QMessageBox.warning(self, tr("warning"), tr("auto_label_no_model"))
             return
 
-        # Determine which images to process
+        # Determine which images to process.
         if self._scope_btn_group.checkedId() == 0:
             paths = [self._image_paths[self._current_index]]
         else:
             paths = self._image_paths
 
         confidence = self._confidence_spin.value()
+        score_threshold = self._score_spin.value()
+        infer_size = self._infer_size_spin.value()
 
         self._progress_bar.setVisible(True)
         self._progress_bar.setMaximum(len(paths))
         self._progress_bar.setValue(0)
         self._start_btn.setEnabled(False)
 
-        self._worker = AutoLabelWorker(self._model_manager, paths, confidence)
+        self._worker = AutoLabelWorker(
+            self._model_manager,
+            paths,
+            confidence=confidence,
+            score_threshold=score_threshold,
+            infer_size=infer_size,
+        )
         self._worker.progress.connect(self._on_progress)
         self._worker.image_done.connect(self._on_image_done)
         self._worker.finished_all.connect(self._on_finished)

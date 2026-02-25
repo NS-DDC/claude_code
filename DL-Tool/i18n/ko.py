@@ -80,6 +80,22 @@ KO = {
     "auto_label_progress": "처리 중 {current}/{total}...",
     "auto_label_complete": "오토 라벨링 완료: {count}개 라벨 생성",
     "auto_label_no_model": "모델이 로드되지 않았습니다. 먼저 모델을 로드해주세요.",
+    "auto_label_score_threshold": "점수 임계값:",
+    "auto_label_score_threshold_tooltip": (
+        "추론 후 적용되는 후처리 신뢰도 필터입니다. "
+        "이 값보다 낮은 점수의 탐지 결과는 제거됩니다. "
+        "더 엄격한 필터링을 원하면 신뢰도보다 높게 설정하세요."
+    ),
+    "auto_label_infer_size": "추론 이미지 크기 (px):",
+    "auto_label_infer_size_tooltip": (
+        "YOLO / RT-DETR 추론 시 사용할 정사각형 이미지 크기 (예: 480). "
+        "좌표는 자동으로 원본 이미지 해상도로 역변환됩니다."
+    ),
+    "auto_label_confidence_tooltip": (
+        "모델에 전달되는 최소 신뢰도 (NMS 임계값)입니다. "
+        "낮게 설정하면 더 많은 탐지 결과를 얻을 수 있으며, "
+        "점수 임계값으로 추가 필터링하세요."
+    ),
 
     # Training dialog
     "training_title": "모델 학습",

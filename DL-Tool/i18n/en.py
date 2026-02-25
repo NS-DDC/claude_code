@@ -80,6 +80,20 @@ EN = {
     "auto_label_progress": "Processing {current}/{total}...",
     "auto_label_complete": "Auto labeling complete: {count} labels generated",
     "auto_label_no_model": "No model loaded. Please load a model first.",
+    "auto_label_score_threshold": "Score Threshold:",
+    "auto_label_score_threshold_tooltip": (
+        "Post-processing confidence filter. Detections with a score below this "
+        "value are discarded after inference. Set higher than Confidence for stricter filtering."
+    ),
+    "auto_label_infer_size": "Inference Size (px):",
+    "auto_label_infer_size_tooltip": (
+        "Square image size used for YOLO / RT-DETR inference (e.g. 480). "
+        "Coordinates are automatically back-projected to original image resolution."
+    ),
+    "auto_label_confidence_tooltip": (
+        "Minimum confidence passed to the model (NMS threshold). "
+        "Use a low value to catch more detections, then filter with Score Threshold."
+    ),
 
     # Training dialog
     "training_title": "Model Training",
