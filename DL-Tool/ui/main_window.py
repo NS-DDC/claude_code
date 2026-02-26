@@ -35,6 +35,7 @@ class MainWindow(QMainWindow):
         self._model = ModelManager()
         self._saver = SaveManager(self._labels, self._project)
         self._current_image_path = ""
+        self._skip_auto_load_mask = False  # suppress auto-load during explicit mask edit
 
         self._setup_ui()
         self._setup_menu()
@@ -566,16 +567,18 @@ class MainWindow(QMainWindow):
         # Lazy-load labels from disk if not yet loaded
         self._load_labels_from_disk(img_path)
 
-        # Display labels
+        # If in SEGMENTATION mode, extract mask labels into the brush canvas
+        # BEFORE displaying so the user doesn't see a brief flash of mask
+        # graphics that immediately disappear.
+        if self._canvas._mode == ToolMode.SEGMENTATION:
+            self._auto_load_mask_for_segmentation(img_path)
+
+        # Display labels (mask labels already removed if in SEGMENTATION)
         labels = self._labels.get_labels(img_path)
         self._canvas.display_labels(labels)
         w, h = self._canvas.get_image_size()
         self._label_list.set_image_size(w, h)
         self._label_list.set_instances(labels)
-
-        # If in SEGMENTATION mode and there are existing mask labels, auto-load them for editing
-        if self._canvas._mode == ToolMode.SEGMENTATION:
-            self._auto_load_mask_for_segmentation(img_path)
 
         # Update status bar
         w, h = self._canvas.get_image_size()
@@ -702,8 +705,10 @@ class MainWindow(QMainWindow):
             self._canvas.finalize_pending_mask()
         self._canvas.set_mode(mode)
         # When switching to SEGMENTATION mode, auto-load existing mask for current image
+        # (skipped when _on_edit_mask_requested already loaded a specific mask)
         if mode == ToolMode.SEGMENTATION and self._current_image_path:
-            self._auto_load_mask_for_segmentation(self._current_image_path)
+            if not self._skip_auto_load_mask:
+                self._auto_load_mask_for_segmentation(self._current_image_path)
 
     def _auto_load_mask_for_segmentation(self, img_path: str):
         """If in SEGMENTATION mode and image has mask labels, auto-load them into the brush canvas."""
@@ -732,16 +737,13 @@ class MainWindow(QMainWindow):
         # Sync label-list class selection to match the loaded mask
         self._label_list.select_class(label_to_edit.class_id)
 
-        # Remove the merged mask labels from label manager.
+        # Remove the merged mask labels from label manager in one batch
+        # to avoid N separate labels_changed emissions (one per remove).
         # Use id() comparison to avoid numpy array __eq__ issues.
         selected_ids = {id(m) for m in selected_masks}
         current_labels = self._labels.get_labels(img_path)
-        indices_to_remove = sorted(
-            [i for i, l in enumerate(current_labels) if id(l) in selected_ids],
-            reverse=True,
-        )
-        for idx in indices_to_remove:
-            self._labels.remove_label(img_path, idx)
+        remaining = [l for l in current_labels if id(l) not in selected_ids]
+        self._labels.set_labels(img_path, remaining)
 
     @Slot(int)
     def _on_brush_size_changed(self, size: int):
@@ -771,8 +773,12 @@ class MainWindow(QMainWindow):
                 )
                 # Remove the old label (use set_labels to update without losing others)
                 self._labels.remove_label(self._current_image_path, index)
-                # Switch to segmentation mode
+                # Switch to segmentation mode.  Suppress auto-load so that
+                # _auto_load_mask_for_segmentation does NOT overwrite the mask
+                # we just loaded for editing.
+                self._skip_auto_load_mask = True
                 self._toolbar.set_mode(ToolMode.SEGMENTATION)
+                self._skip_auto_load_mask = False
                 # Sync class selection to match the mask's class
                 classes = self._label_list.get_classes()
                 for i, cls in enumerate(classes):
@@ -849,6 +855,10 @@ class MainWindow(QMainWindow):
             w, h = self._canvas.get_image_size()
             self._label_list.set_image_size(w, h)
             self._label_list.set_instances(labels)
+
+            # Re-apply preserved visibility state to canvas items
+            for i, vis in enumerate(self._label_list.get_visibility()):
+                self._canvas.set_label_visible(i, vis)
 
             # Restore selection when the index is still valid (e.g. after
             # an update_label edit) so edit handles persist.

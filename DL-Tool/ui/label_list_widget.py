@@ -206,10 +206,23 @@ class LabelListWidget(QWidget):
         self._image_size = (width, height)
 
     def set_instances(self, labels: list):
-        """Set label instances for current image. Each item has class_name, label_type."""
+        """Set label instances for current image. Each item has class_name, label_type.
+
+        Visibility is preserved when the label count is unchanged (e.g. after
+        editing a bbox handle) so that the user's show/hide choices survive
+        label-update refreshes.
+        """
         self._current_labels = labels
-        self._visibility = [True] * len(labels)
+        new_count = len(labels)
+        if len(self._visibility) != new_count:
+            # Count changed (add / delete / new image) → reset to all-visible
+            self._visibility = [True] * new_count
+        # else: same count → keep existing visibility
         self._refresh_instance_list()
+
+    def get_visibility(self) -> list[bool]:
+        """Return the current per-label visibility list."""
+        return list(self._visibility)
 
     def _refresh_instance_list(self):
         """Re-render instance list with current coordinate format."""

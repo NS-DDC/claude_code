@@ -65,6 +65,7 @@ class CanvasWidget(QWidget):
         self._edit_label_index = -1
         self._edit_handle_index = -1  # bbox: 0-3=corners, 4=center; polygon: vertex index
         self._edit_start_pos: Optional[QPointF] = None
+        self._edit_original_points: list[tuple[float, float]] = []  # pre-edit snapshot for undo
         self._handle_items: list[QGraphicsEllipseItem] = []
 
         # Brush/mask state
@@ -720,6 +721,9 @@ class CanvasWidget(QWidget):
                     self._edit_label_index = self._selected_index
                     self._edit_handle_index = i
                     self._edit_start_pos = scene_pos
+                    # Save pre-edit points so undo captures the original state
+                    label = self._label_items[self._selected_index].label
+                    self._edit_original_points = list(label.points)
                     return
 
         if self._mode == ToolMode.DETECTION:
@@ -823,11 +827,20 @@ class CanvasWidget(QWidget):
         # Finish editing
         if self._editing:
             label = self._label_items[self._edit_label_index].label
-            self.label_updated.emit(self._edit_label_index, label)
+            # Capture the modified points before restoring the original
+            new_points = list(label.points)
+            # Restore original pre-edit points on the shared object so that
+            # UpdateLabelCommand.redo() captures the true pre-edit state.
+            label.points = list(self._edit_original_points)
+            # Create a separate copy with the modified points
+            updated = label.copy()
+            updated.points = new_points
+            self.label_updated.emit(self._edit_label_index, updated)
             self._editing = False
             self._edit_label_index = -1
             self._edit_handle_index = -1
             self._edit_start_pos = None
+            self._edit_original_points = []
             return
 
         if self._mode == ToolMode.DETECTION and self._bbox_mode == "rectangle" and self._drawing and self._draw_start:
@@ -908,11 +921,21 @@ class CanvasWidget(QWidget):
         self.label_created.emit(label)
 
     def _finalize_polygon_as_bbox(self):
-        """Finalize polygon as bbox label (for Detection mode with polygon option)."""
+        """Finalize polygon as bbox label (for Detection mode with polygon option).
+
+        The polygon vertices are converted to a proper 4-corner bounding box
+        so that display, editing handles, and YOLO serialisation all work
+        consistently with a standard bbox.
+        """
         if len(self._polygon_points) < 3:
             return
 
-        points = [(p.x(), p.y()) for p in self._polygon_points]
+        # Convert polygon to bounding rect (4 corners)
+        xs = [p.x() for p in self._polygon_points]
+        ys = [p.y() for p in self._polygon_points]
+        x1, y1 = min(xs), min(ys)
+        x2, y2 = max(xs), max(ys)
+        points = [(x1, y1), (x2, y1), (x2, y2), (x1, y2)]
 
         # Cleanup temp graphics
         if self._temp_polygon and self._temp_polygon.scene():
@@ -927,7 +950,7 @@ class CanvasWidget(QWidget):
         label = LabelItem(
             class_id=self._current_class_id,
             class_name=self._current_class_name,
-            label_type="bbox",  # Saved as bbox type
+            label_type="bbox",
             points=points,
             color=self._current_color,
         )
