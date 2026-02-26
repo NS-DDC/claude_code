@@ -93,6 +93,7 @@ class SaveManager:
         if mask_labels:
             gt_dir = Path(self._project.image_dir) / "gt_image"
             img_file = Path(image_path)
+            mask_class_names = set()
             for label in mask_labels:
                 class_dir = gt_dir / label.class_name
                 class_dir.mkdir(parents=True, exist_ok=True)
@@ -100,6 +101,21 @@ class SaveManager:
                 ExportManager.save_semantic_mask(
                     [label], w, h, str(gt_path), multi_label=False
                 )
+                mask_class_names.add(label.class_name)
+
+            # Create empty GT masks for classes that have a gt_image/<class>/
+            # directory but no mask on this image, so training image counts
+            # stay consistent across all segmentation classes.
+            for cname in class_names.values():
+                if cname not in mask_class_names:
+                    class_dir = gt_dir / cname
+                    if class_dir.is_dir():
+                        gt_path = class_dir / (img_file.stem + ".png")
+                        if not gt_path.exists():
+                            ExportManager.save_semantic_mask(
+                                [], w, h, str(gt_path), multi_label=False
+                            )
+
             saved.append(f"GT images ({len(mask_labels)} classes)")
 
         # ── Copy original image ────────────────────────────────────────
@@ -155,6 +171,7 @@ class SaveManager:
 
             if mask_labels:
                 img_file = Path(img_path)
+                mask_class_names = set()
                 for label in mask_labels:
                     class_dir = gt_dir / label.class_name
                     class_dir.mkdir(parents=True, exist_ok=True)
@@ -162,6 +179,19 @@ class SaveManager:
                     ExportManager.save_semantic_mask(
                         [label], w, h, str(gt_path), multi_label=False
                     )
+                    mask_class_names.add(label.class_name)
+
+                # Create empty GT for classes with existing gt_image/ dirs
+                for cname in class_names.values():
+                    if cname not in mask_class_names:
+                        class_dir = gt_dir / cname
+                        if class_dir.is_dir():
+                            gt_path = class_dir / (img_file.stem + ".png")
+                            if not gt_path.exists():
+                                ExportManager.save_semantic_mask(
+                                    [], w, h, str(gt_path), multi_label=False
+                                )
+
                 gt_count += 1
 
             dest = images_dir / Path(img_path).name

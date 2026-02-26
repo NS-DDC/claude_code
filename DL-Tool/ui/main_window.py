@@ -299,6 +299,10 @@ class MainWindow(QMainWindow):
         if not self._project.image_dir:
             return
 
+        # Finalize any pending mask before bulk save
+        if self._canvas.has_unfinished_mask():
+            self._canvas.finalize_pending_mask()
+
         classes = self._label_list.get_classes()
         class_names = {i: c["name"] for i, c in enumerate(classes)}
 
@@ -546,7 +550,7 @@ class MainWindow(QMainWindow):
 
         # Finalize any unfinished brush/mask work before switching (always, regardless of auto_save)
         if self._current_image_path and self._canvas.has_unfinished_mask():
-            self._canvas.finish_current_shape()
+            self._canvas.finalize_pending_mask()
 
         # Auto-save previous image labels
         if self._current_image_path and self._config.auto_save:
@@ -691,6 +695,10 @@ class MainWindow(QMainWindow):
 
     @Slot(str)
     def _on_mode_changed(self, mode: str):
+        # Finalize any pending mask before leaving segmentation mode
+        # so the brush data is persisted back to the label manager.
+        if self._canvas.has_unfinished_mask():
+            self._canvas.finalize_pending_mask()
         self._canvas.set_mode(mode)
         # When switching to SEGMENTATION mode, auto-load existing mask for current image
         if mode == ToolMode.SEGMENTATION and self._current_image_path:
@@ -885,6 +893,10 @@ class MainWindow(QMainWindow):
         """Save labels for current image to disk."""
         if not self._current_image_path or not self._project.image_dir:
             return
+
+        # Finalize any pending mask so it is included in the save
+        if self._canvas.has_unfinished_mask():
+            self._canvas.finalize_pending_mask()
 
         labels = self._labels.get_labels(self._current_image_path)
 

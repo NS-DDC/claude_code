@@ -242,10 +242,18 @@ class CanvasWidget(QWidget):
                 self._finalize_mask()
 
     def has_unfinished_mask(self) -> bool:
-        """Check if there's an unfinished mask drawing."""
-        return (self._mode == ToolMode.SEGMENTATION and
-                self._current_mask is not None and
+        """Check if there's an unfinished mask drawing (any mode)."""
+        return (self._current_mask is not None and
                 self._current_mask.max() > 0)
+
+    def finalize_pending_mask(self):
+        """Finalize any pending mask regardless of current mode.
+
+        Use this for cleanup before saving or switching images, so that
+        mask data loaded into the brush is not lost.
+        """
+        if self._current_mask is not None and self._current_mask.max() > 0:
+            self._finalize_mask()
 
     def display_labels(self, labels: list[LabelItem]):
         # Remove old label graphics
