@@ -695,9 +695,10 @@ class MainWindow(QMainWindow):
 
     @Slot(str)
     def _on_mode_changed(self, mode: str):
-        # Finalize any pending mask before leaving segmentation mode
-        # so the brush data is persisted back to the label manager.
-        if self._canvas.has_unfinished_mask():
+        # Finalize pending mask only when LEAVING segmentation.
+        # When entering segmentation, _auto_load_mask_for_segmentation
+        # handles it and would conflict with an early finalize (wrong class).
+        if mode != ToolMode.SEGMENTATION and self._canvas.has_unfinished_mask():
             self._canvas.finalize_pending_mask()
         self._canvas.set_mode(mode)
         # When switching to SEGMENTATION mode, auto-load existing mask for current image
@@ -723,12 +724,21 @@ class MainWindow(QMainWindow):
             if ml.mask_data is not None:
                 combined = np.maximum(combined, ml.mask_data)
         label_to_edit = selected_masks[0]
-        self._canvas.load_mask_for_editing(combined, label_to_edit.color)
-        # Remove the merged mask labels from label manager
+        self._canvas.load_mask_for_editing(
+            combined, label_to_edit.color,
+            class_id=label_to_edit.class_id,
+            class_name=label_to_edit.class_name,
+        )
+        # Sync label-list class selection to match the loaded mask
+        self._label_list.select_class(label_to_edit.class_id)
+
+        # Remove the merged mask labels from label manager.
+        # Use id() comparison to avoid numpy array __eq__ issues.
+        selected_ids = {id(m) for m in selected_masks}
         current_labels = self._labels.get_labels(img_path)
         indices_to_remove = sorted(
-            [i for i, l in enumerate(current_labels) if l in selected_masks],
-            reverse=True
+            [i for i, l in enumerate(current_labels) if id(l) in selected_ids],
+            reverse=True,
         )
         for idx in indices_to_remove:
             self._labels.remove_label(img_path, idx)
@@ -752,8 +762,13 @@ class MainWindow(QMainWindow):
         if 0 <= index < len(labels):
             label = labels[index]
             if label.label_type == "mask" and label.mask_data is not None:
-                # Load mask into canvas for editing
-                self._canvas.load_mask_for_editing(label.mask_data.copy(), label.color)
+                # Load mask into canvas for editing (with class info so
+                # finalize_pending_mask uses the correct class).
+                self._canvas.load_mask_for_editing(
+                    label.mask_data.copy(), label.color,
+                    class_id=label.class_id,
+                    class_name=label.class_name,
+                )
                 # Remove the old label (use set_labels to update without losing others)
                 self._labels.remove_label(self._current_image_path, index)
                 # Switch to segmentation mode
@@ -826,11 +841,20 @@ class MainWindow(QMainWindow):
     @Slot(str)
     def _on_labels_changed(self, image_path: str):
         if image_path == self._current_image_path:
+            # Remember selection so we can restore after refresh
+            prev_selected = self._canvas.get_selected_index()
+
             labels = self._labels.get_labels(image_path)
             self._canvas.display_labels(labels)
             w, h = self._canvas.get_image_size()
             self._label_list.set_image_size(w, h)
             self._label_list.set_instances(labels)
+
+            # Restore selection when the index is still valid (e.g. after
+            # an update_label edit) so edit handles persist.
+            if 0 <= prev_selected < len(labels):
+                self._canvas.highlight_label(prev_selected)
+                self._label_list.select_instance(prev_selected)
 
         # Update file list icon
         idx = self._project.get_image_index(image_path)

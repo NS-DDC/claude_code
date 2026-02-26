@@ -218,8 +218,19 @@ class CanvasWidget(QWidget):
         """Set BBox drawing mode (rectangle or polygon)."""
         self._bbox_mode = mode
 
-    def load_mask_for_editing(self, mask_data: np.ndarray, color: str):
-        """Load an existing mask into the canvas for editing."""
+    def load_mask_for_editing(
+        self,
+        mask_data: np.ndarray,
+        color: str,
+        class_id: int | None = None,
+        class_name: str | None = None,
+    ):
+        """Load an existing mask into the canvas for editing.
+
+        When *class_id* / *class_name* are given the canvas class state is
+        updated immediately so that ``_finalize_mask`` will later use the
+        correct class, even if the current class on the canvas differs.
+        """
         if self._image_pixmap is None:
             return
         w, h = self._image_pixmap.width(), self._image_pixmap.height()
@@ -228,6 +239,11 @@ class CanvasWidget(QWidget):
             mask_data = cv2.resize(mask_data, (w, h), interpolation=cv2.INTER_NEAREST)
         self._current_mask = mask_data
         self._current_mask_color = color
+        # Sync class so finalize uses the mask's original class
+        if class_id is not None:
+            self._current_class_id = class_id
+        if class_name is not None:
+            self._current_class_name = class_name
         self._update_mask_display()
         self._show_brush_cursor()
 
@@ -393,6 +409,7 @@ class CanvasWidget(QWidget):
             qimage = QImage(overlay.data, w, h, w * 4, QImage.Format.Format_RGBA8888)
             pixmap = QPixmap.fromImage(qimage)
             item = self._scene.addPixmap(pixmap)
+            item.setShapeMode(QGraphicsPixmapItem.ShapeMode.MaskShape)
             item.setZValue(10)
             return item
         else:
