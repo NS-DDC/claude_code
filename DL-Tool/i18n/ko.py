@@ -54,6 +54,8 @@ KO = {
     "label_remove_class": "클래스 삭제",
     "label_class_name": "클래스 이름:",
     "label_no_labels": "이 이미지에 라벨이 없습니다",
+    "label_show_all": "모두 보기",
+    "label_hide_all": "모두 숨기기",
 
     # BBox coordinate format
     "bbox_coord_format": "좌표 표시",

@@ -251,6 +251,7 @@ class MainWindow(QMainWindow):
         self._label_list.class_selected.connect(self._on_class_selected)
         self._label_list.instance_selected.connect(self._on_instance_selected)
         self._label_list.delete_instance_requested.connect(self._on_delete_instance)
+        self._label_list.visibility_changed.connect(self._canvas.set_label_visible)
 
         # Label manager changes
         self._labels.labels_changed.connect(self._on_labels_changed)

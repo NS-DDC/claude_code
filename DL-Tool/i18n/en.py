@@ -54,6 +54,8 @@ EN = {
     "label_remove_class": "Remove Class",
     "label_class_name": "Class Name:",
     "label_no_labels": "No labels for this image",
+    "label_show_all": "Show All",
+    "label_hide_all": "Hide All",
 
     # BBox coordinate format
     "bbox_coord_format": "Coordinates",

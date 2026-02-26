@@ -262,6 +262,11 @@ class CanvasWidget(QWidget):
             gfx = self._create_label_graphics(label)
             self._label_items.append(LabelGraphicsItem(label, gfx))
 
+    def set_label_visible(self, index: int, visible: bool):
+        """Show or hide a label graphics item by index."""
+        if 0 <= index < len(self._label_items):
+            self._label_items[index].graphics_item.setVisible(visible)
+
     def highlight_label(self, index: int):
         # Reset previous highlight
         if 0 <= self._selected_index < len(self._label_items):

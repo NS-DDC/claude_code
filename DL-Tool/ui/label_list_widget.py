@@ -27,12 +27,14 @@ class LabelListWidget(QWidget):
     class_added = Signal(str, str)  # name, color
     class_removed = Signal(int)  # class index
     delete_instance_requested = Signal(int)  # label index
+    visibility_changed = Signal(int, bool)  # label index, visible
 
     def __init__(self, parent: QWidget = None):
         super().__init__(parent)
         self._classes: list[dict] = []  # [{name, color}, ...]
         self._current_labels: list = []  # store for re-rendering on format change
         self._image_size: tuple[int, int] = (0, 0)
+        self._visibility: list[bool] = []  # per-label visibility state
         self._config = get_config()
         self._setup_ui()
 
@@ -84,11 +86,21 @@ class LabelListWidget(QWidget):
         self._instance_list = QListWidget()
         self._instance_list.setSelectionMode(QAbstractItemView.SelectionMode.SingleSelection)
         self._instance_list.currentRowChanged.connect(self._on_instance_row_changed)
+        self._instance_list.itemChanged.connect(self._on_item_changed)
         inst_layout.addWidget(self._instance_list)
 
         self._delete_inst_btn = QPushButton(tr("action_delete_label"))
         self._delete_inst_btn.clicked.connect(self._on_delete_instance)
         inst_layout.addWidget(self._delete_inst_btn)
+
+        vis_btn_layout = QHBoxLayout()
+        self._show_all_btn = QPushButton(tr("label_show_all"))
+        self._show_all_btn.clicked.connect(self._on_show_all)
+        vis_btn_layout.addWidget(self._show_all_btn)
+        self._hide_all_btn = QPushButton(tr("label_hide_all"))
+        self._hide_all_btn.clicked.connect(self._on_hide_all)
+        vis_btn_layout.addWidget(self._hide_all_btn)
+        inst_layout.addLayout(vis_btn_layout)
 
         self._no_labels_label = QLabel(tr("label_no_labels"))
         self._no_labels_label.setStyleSheet("color: gray; padding: 4px;")
@@ -196,14 +208,17 @@ class LabelListWidget(QWidget):
     def set_instances(self, labels: list):
         """Set label instances for current image. Each item has class_name, label_type."""
         self._current_labels = labels
+        self._visibility = [True] * len(labels)
         self._refresh_instance_list()
 
     def _refresh_instance_list(self):
         """Re-render instance list with current coordinate format."""
+        self._instance_list.blockSignals(True)
         self._instance_list.clear()
         labels = self._current_labels
         if not labels:
             self._no_labels_label.show()
+            self._instance_list.blockSignals(False)
             return
 
         self._no_labels_label.hide()
@@ -219,7 +234,12 @@ class LabelListWidget(QWidget):
             pixmap = QPixmap(12, 12)
             pixmap.fill(color)
             item.setIcon(QIcon(pixmap))
+            item.setFlags(item.flags() | Qt.ItemFlag.ItemIsUserCheckable)
+            visible = self._visibility[i] if i < len(self._visibility) else True
+            item.setCheckState(Qt.CheckState.Checked if visible else Qt.CheckState.Unchecked)
             self._instance_list.addItem(item)
+
+        self._instance_list.blockSignals(False)
 
     def _format_coords(self, label, fmt: str, img_w: int, img_h: int) -> str:
         """Format coordinate info string based on selected format."""
@@ -265,12 +285,33 @@ class LabelListWidget(QWidget):
         if row >= 0:
             self.delete_instance_requested.emit(row)
 
+    def _on_item_changed(self, item: QListWidgetItem):
+        index = self._instance_list.row(item)
+        if 0 <= index < len(self._visibility):
+            visible = item.checkState() == Qt.CheckState.Checked
+            self._visibility[index] = visible
+            self.visibility_changed.emit(index, visible)
+
+    def _on_show_all(self):
+        self._visibility = [True] * len(self._current_labels)
+        self._refresh_instance_list()
+        for i in range(len(self._current_labels)):
+            self.visibility_changed.emit(i, True)
+
+    def _on_hide_all(self):
+        self._visibility = [False] * len(self._current_labels)
+        self._refresh_instance_list()
+        for i in range(len(self._current_labels)):
+            self.visibility_changed.emit(i, False)
+
     def retranslate(self):
         self._classes_group.setTitle(tr("label_classes_title"))
         self._instances_group.setTitle(tr("label_instances_title"))
         self._add_btn.setText(tr("label_add_class"))
         self._remove_btn.setText(tr("label_remove_class"))
         self._delete_inst_btn.setText(tr("action_delete_label"))
+        self._show_all_btn.setText(tr("label_show_all"))
+        self._hide_all_btn.setText(tr("label_hide_all"))
         self._no_labels_label.setText(tr("label_no_labels"))
         self._coord_label.setText(tr("bbox_coord_format"))
         self._coord_combo.setItemText(0, tr("bbox_coord_absolute"))
