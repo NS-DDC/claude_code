@@ -128,6 +128,15 @@ class CanvasWidget(QWidget):
         self._label_items.clear()
         self._reset_drawing_state()
 
+        # Reset editing state to prevent stale handle references on new image
+        self._editing = False
+        self._edit_label_index = -1
+        self._edit_handle_index = -1
+        self._edit_start_pos = None
+        self._edit_original_points = []
+        self._handle_items.clear()  # scene.clear() already removed the items
+        self._selected_index = -1
+
         # Reset mask and mask display for new image
         self._current_mask = None
         self._mask_pixmap_item = None
@@ -272,6 +281,15 @@ class CanvasWidget(QWidget):
         if self._current_mask is not None and self._current_mask.max() > 0:
             self._finalize_mask()
 
+    def discard_pending_mask(self):
+        """Discard any pending mask without saving (for skip/next-without-save)."""
+        if self._current_mask is not None:
+            self._current_mask = np.zeros_like(self._current_mask)
+            self._current_mask_color = None
+            if self._mask_pixmap_item and self._mask_pixmap_item.scene():
+                self._scene.removeItem(self._mask_pixmap_item)
+                self._mask_pixmap_item = None
+
     def display_labels(self, labels: list[LabelItem]):
         # Remove old label graphics
         for li in self._label_items:
@@ -408,6 +426,7 @@ class CanvasWidget(QWidget):
             overlay[:, :, 3] = (label.mask_data * 0.5).astype(np.uint8)
 
             qimage = QImage(overlay.data, w, h, w * 4, QImage.Format.Format_RGBA8888)
+            qimage = qimage.copy()  # detach from numpy buffer before it goes out of scope
             pixmap = QPixmap.fromImage(qimage)
             item = self._scene.addPixmap(pixmap)
             item.setShapeMode(QGraphicsPixmapItem.ShapeMode.MaskShape)
@@ -595,8 +614,9 @@ class CanvasWidget(QWidget):
         overlay[:, :, 2] = color.red()
         overlay[:, :, 3] = (self._current_mask * 0.5).astype(np.uint8)  # 50% opacity
 
-        # Convert to QPixmap
+        # Convert to QPixmap (copy QImage to detach from numpy buffer)
         qimage = QImage(overlay.data, w, h, w * 4, QImage.Format.Format_RGBA8888)
+        qimage = qimage.copy()
         pixmap = QPixmap.fromImage(qimage)
 
         # Update or create pixmap item
@@ -651,8 +671,8 @@ class CanvasWidget(QWidget):
         scene_pos = self._view.mapToScene(view_pos)
         if self._image_pixmap:
             w, h = self._image_pixmap.width(), self._image_pixmap.height()
-            x = max(0, min(scene_pos.x(), w))
-            y = max(0, min(scene_pos.y(), h))
+            x = max(0, min(scene_pos.x(), w - 1))
+            y = max(0, min(scene_pos.y(), h - 1))
             return QPointF(x, y)
         return scene_pos
 

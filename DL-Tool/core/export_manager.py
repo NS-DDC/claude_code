@@ -31,15 +31,15 @@ class ExportManager:
         output_path: str,
         class_names: dict[int, str] | None = None,
     ) -> None:
-        """Save labels in YOLO annotation format with class name prefix.
+        """Save labels in standard YOLO annotation format.
 
-        Line format::
+        Line format (bbox)::
 
-            <class_name> <class_id> <cx> <cy> <w> <h>
+            <class_id> <cx> <cy> <w> <h>
 
-        or for polygon/mask::
+        Line format (polygon/mask)::
 
-            <class_name> <class_id> <x1> <y1> <x2> <y2> ... <xn> <yn>
+            <class_id> <x1> <y1> <x2> <y2> ... <xn> <yn>
 
         Args:
             labels: List of ``LabelItem`` instances.
@@ -85,7 +85,10 @@ class ExportManager:
     def _bbox_to_yolo_line(
         label: LabelItem, img_w: int, img_h: int
     ) -> str:
-        """Convert a bbox LabelItem to a YOLO detection line with class name."""
+        """Convert a bbox LabelItem to a standard YOLO detection line.
+
+        Standard YOLO format: ``<class_id> <cx> <cy> <w> <h>``
+        """
         xs = [p[0] for p in label.points]
         ys = [p[1] for p in label.points]
         x_min, x_max = min(xs), max(xs)
@@ -96,18 +99,21 @@ class ExportManager:
         w = (x_max - x_min) / img_w
         h = (y_max - y_min) / img_h
 
-        return f"{label.class_name} {label.class_id} {cx:.6f} {cy:.6f} {w:.6f} {h:.6f}"
+        return f"{label.class_id} {cx:.6f} {cy:.6f} {w:.6f} {h:.6f}"
 
     @staticmethod
     def _polygon_to_yolo_line(
         label: LabelItem, img_w: int, img_h: int
     ) -> str:
-        """Convert a polygon LabelItem to a YOLO segmentation line with class name."""
+        """Convert a polygon LabelItem to a standard YOLO segmentation line.
+
+        Standard YOLO format: ``<class_id> <x1> <y1> <x2> <y2> ... <xn> <yn>``
+        """
         coords: list[str] = []
         for x, y in label.points:
             coords.append(f"{x / img_w:.6f}")
             coords.append(f"{y / img_h:.6f}")
-        return f"{label.class_name} {label.class_id} " + " ".join(coords)
+        return f"{label.class_id} " + " ".join(coords)
 
     @staticmethod
     def _mask_to_yolo_line(
@@ -142,7 +148,7 @@ class ExportManager:
         if len(coords) < 6:  # At least 3 points
             return ""
 
-        return f"{label.class_name} {label.class_id} " + " ".join(coords)
+        return f"{label.class_id} " + " ".join(coords)
 
     # ------------------------------------------------------------------
     # YOLO TXT – load
@@ -320,6 +326,11 @@ class ExportManager:
         mask = np.zeros((image_height, image_width), dtype=np.uint8)
 
         for label in labels:
+            if label.label_type == "mask" and label.mask_data is not None:
+                mask_binary = (label.mask_data > 0).astype(np.uint8)
+                mask[mask_binary > 0] = 255
+                continue
+
             pts = np.array(label.points, dtype=np.int32)
 
             if label.label_type == "bbox":

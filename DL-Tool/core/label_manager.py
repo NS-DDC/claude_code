@@ -161,12 +161,14 @@ class ClearLabelsCommand(QUndoCommand):
 
     def redo(self) -> None:
         labels = self._manager._labels.get(self._image_path, [])
-        self._old_labels = list(labels)
+        # Deep copy each label so undo restores correct data even if
+        # the original objects are later mutated (e.g. mask_data in-place).
+        self._old_labels = [l.copy() for l in labels]
         labels.clear()
         self._manager.labels_changed.emit(self._image_path)
 
     def undo(self) -> None:
-        self._manager._labels[self._image_path] = list(self._old_labels)
+        self._manager._labels[self._image_path] = [l.copy() for l in self._old_labels]
         self._manager.labels_changed.emit(self._image_path)
 
 

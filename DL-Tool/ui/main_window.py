@@ -36,6 +36,7 @@ class MainWindow(QMainWindow):
         self._saver = SaveManager(self._labels, self._project)
         self._current_image_path = ""
         self._skip_auto_load_mask = False  # suppress auto-load during explicit mask edit
+        self._discard_pending_mask = False  # discard (not finalize) mask on next image switch
 
         self._setup_ui()
         self._setup_menu()
@@ -355,8 +356,8 @@ class MainWindow(QMainWindow):
                 if img is not None:
                     h, w = img.shape[:2]
                     img_file = Path(img_path)
-                    # Save mask in gt_image folder with same name and extension
-                    mask_path = gt_image_dir / img_file.name
+                    # Save mask as PNG (lossless) to avoid JPEG lossy compression
+                    mask_path = gt_image_dir / (img_file.stem + ".png")
                     ExportManager.save_semantic_mask(labels, w, h, str(mask_path), multi_label)
                     count += 1
 
@@ -419,9 +420,9 @@ class MainWindow(QMainWindow):
             tr("import_complete").format(labels=label_count, gt=gt_count), 5000
         )
 
-        # Reload all image labels (clear cache so re-load picks up new files)
+        # Clear label cache (non-undoable) so re-load picks up new files
         for img_path in self._project.image_list:
-            self._labels.clear_labels(img_path)
+            self._labels.remove_image(img_path)
 
         # Update file list label status
         for i, img_path in enumerate(self._project.image_list):
@@ -549,9 +550,12 @@ class MainWindow(QMainWindow):
         if not img_path:
             return
 
-        # Finalize any unfinished brush/mask work before switching (always, regardless of auto_save)
+        # Handle pending mask work before switching images
         if self._current_image_path and self._canvas.has_unfinished_mask():
-            self._canvas.finalize_pending_mask()
+            if self._discard_pending_mask:
+                self._canvas.discard_pending_mask()
+            else:
+                self._canvas.finalize_pending_mask()
 
         # Auto-save previous image labels
         if self._current_image_path and self._config.auto_save:
@@ -592,15 +596,17 @@ class MainWindow(QMainWindow):
         """Skip to next image without saving labels."""
         current_idx = self._file_list.current_index()
         if current_idx >= 0 and current_idx < self._project.image_count - 1:
-            # Temporarily disable auto-save
+            # Temporarily disable auto-save and discard pending mask
             auto_save_backup = self._config.auto_save
             self._config.auto_save = False
+            self._discard_pending_mask = True
 
             # Move to next image
             self._file_list.select_image(current_idx + 1)
 
-            # Restore auto-save setting
+            # Restore settings
             self._config.auto_save = auto_save_backup
+            self._discard_pending_mask = False
 
             self._status_bar.showMessage(tr("status_skipped"), 2000)
 
@@ -609,15 +615,17 @@ class MainWindow(QMainWindow):
         """Move to next image without saving current labels."""
         current_idx = self._file_list.current_index()
         if current_idx >= 0 and current_idx < self._project.image_count - 1:
-            # Temporarily disable auto-save
+            # Temporarily disable auto-save and discard pending mask
             auto_save_backup = self._config.auto_save
             self._config.auto_save = False
+            self._discard_pending_mask = True
 
             # Move to next image
             self._file_list.select_image(current_idx + 1)
 
-            # Restore auto-save setting
+            # Restore settings
             self._config.auto_save = auto_save_backup
+            self._discard_pending_mask = False
 
             self._status_bar.showMessage(tr("status_next_no_save"), 2000)
 
@@ -640,14 +648,16 @@ class MainWindow(QMainWindow):
         """Move to previous image WITHOUT saving (changed from auto-save)."""
         current_idx = self._file_list.current_index()
         if current_idx > 0:
-            # Temporarily disable auto-save so A key doesn't save
+            # Temporarily disable auto-save and discard pending mask
             auto_save_backup = self._config.auto_save
             self._config.auto_save = False
+            self._discard_pending_mask = True
 
             self._file_list.select_image(current_idx - 1)
 
-            # Restore auto-save setting
+            # Restore settings
             self._config.auto_save = auto_save_backup
+            self._discard_pending_mask = False
 
             self._status_bar.showMessage(tr("status_prev_image"), 2000)
 
@@ -688,11 +698,24 @@ class MainWindow(QMainWindow):
         if os.path.exists(self._current_image_path):
             os.remove(self._current_image_path)
 
-        # Remove from label manager
-        self._labels.clear_labels(self._current_image_path)
+        # Remove from label manager (non-undoable since image is deleted)
+        self._labels.remove_image(self._current_image_path)
 
-        # Reload project to update file list
-        self._project.open_folder(self._project.image_dir)
+        # Remove from project image list incrementally (avoids clearing
+        # the label cache for every other image).
+        self._project.remove_image(self._current_image_path)
+        images = self._project.image_list
+        self._file_list.set_image_list(images)
+
+        # Update label status indicators
+        for i, ip in enumerate(images):
+            has = self._project.has_labels(ip)
+            self._file_list.update_label_status(i, has)
+
+        # Select next image (or previous if at end)
+        if images:
+            new_idx = min(current_idx, len(images) - 1)
+            self._file_list.select_image(new_idx)
 
         self._status_bar.showMessage(tr("exclude_done").format(name=img_name), 3000)
 
@@ -712,7 +735,9 @@ class MainWindow(QMainWindow):
 
     def _auto_load_mask_for_segmentation(self, img_path: str):
         """If in SEGMENTATION mode and image has mask labels, auto-load them into the brush canvas."""
-        labels = self._labels.get_labels(img_path)
+        # Use get_labels_ref so id()-based removal below works on the
+        # actual internal objects (get_labels returns copies).
+        labels = self._labels.get_labels_ref(img_path)
         mask_labels = [l for l in labels if l.label_type == "mask"]
         if not mask_labels:
             return
@@ -739,10 +764,11 @@ class MainWindow(QMainWindow):
 
         # Remove the merged mask labels from label manager in one batch
         # to avoid N separate labels_changed emissions (one per remove).
-        # Use id() comparison to avoid numpy array __eq__ issues.
-        selected_ids = {id(m) for m in selected_masks}
-        current_labels = self._labels.get_labels(img_path)
-        remaining = [l for l in current_labels if id(l) not in selected_ids]
+        # Use get_labels_ref so we work on the actual internal list objects
+        # (get_labels returns copies whose id() would never match).
+        selected_set = set(id(m) for m in selected_masks)
+        ref_labels = self._labels.get_labels_ref(img_path)
+        remaining = [l for l in ref_labels if id(l) not in selected_set]
         self._labels.set_labels(img_path, remaining)
 
     @Slot(int)
@@ -1081,9 +1107,16 @@ class MainWindow(QMainWindow):
         self._status_bar.showMessage(f"{tr('status_ready')}  |  {model_status}")
 
     def closeEvent(self, event):
-        # Save labels on exit
-        if self._current_image_path and self._config.auto_save:
-            self._save_current_labels()
+        # Finalize any pending mask
+        if self._canvas.has_unfinished_mask():
+            self._canvas.finalize_pending_mask()
+
+        # Save all images with labels (not just the current one)
+        if self._config.auto_save and self._project.image_dir:
+            classes = self._label_list.get_classes()
+            class_names = {i: c["name"] for i, c in enumerate(classes)}
+            self._saver.save_all_images(class_names)
+
         self._config.window_width = self.width()
         self._config.window_height = self.height()
         self._config.save()

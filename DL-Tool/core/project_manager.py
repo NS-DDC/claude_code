@@ -125,6 +125,17 @@ class ProjectManager(QObject):
         except ValueError:
             return -1
 
+    def remove_image(self, image_path: str) -> None:
+        """Remove a single image from the list without re-scanning the folder.
+
+        This avoids clearing the label cache for all other images.
+        """
+        try:
+            self._image_list.remove(image_path)
+        except ValueError:
+            pass
+        self.image_list_updated.emit()
+
     def refresh(self) -> None:
         """Re-scan the current folder for images."""
         if self._image_dir is not None:

@@ -256,6 +256,11 @@ class LabelListWidget(QWidget):
 
     def _format_coords(self, label, fmt: str, img_w: int, img_h: int) -> str:
         """Format coordinate info string based on selected format."""
+        if label.label_type == "mask":
+            if label.mask_data is not None:
+                pixel_count = int((label.mask_data > 0).sum())
+                return f"mask ({pixel_count}px)"
+            return "mask"
         if label.label_type == "bbox" and len(label.points) == 4:
             xs = [p[0] for p in label.points]
             ys = [p[1] for p in label.points]

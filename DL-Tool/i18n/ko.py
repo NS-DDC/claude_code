@@ -2,7 +2,7 @@
 
 KO = {
     # Application
-    "app_title": "VisionAce - 딥러닝 라벨링 & 학습 도구",
+    "app_title": "VisionAce - 딥러닝 라벨링 & 학습 도구  |  by KNS",
 
     # Menu - File
     "menu_file": "파일(&F)",

@@ -2,7 +2,7 @@
 
 EN = {
     # Application
-    "app_title": "VisionAce - Deep Learning Labeling & Training Tool",
+    "app_title": "VisionAce - Deep Learning Labeling & Training Tool  |  by KNS",
 
     # Menu - File
     "menu_file": "&File",

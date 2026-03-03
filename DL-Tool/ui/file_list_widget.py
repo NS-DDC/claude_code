@@ -12,8 +12,12 @@ from i18n import tr
 
 
 class _ThumbnailWorker(QObject):
-    """Loads thumbnails in a background thread one at a time."""
-    thumbnail_ready = Signal(int, QIcon)  # index, icon
+    """Loads thumbnails in a background thread one at a time.
+
+    QPixmap is not thread-safe; only QImage work is done here.
+    The main-thread slot converts QImage → QPixmap → QIcon.
+    """
+    thumbnail_ready = Signal(int, QImage)  # index, scaled QImage
     finished = Signal()
 
     def __init__(self, image_paths: list[str], thumb_size: int = 64):
@@ -37,8 +41,7 @@ class _ThumbnailWorker(QObject):
                         Qt.AspectRatioMode.KeepAspectRatio,
                         Qt.TransformationMode.FastTransformation,
                     )
-                    pixmap = QPixmap.fromImage(scaled)
-                    self.thumbnail_ready.emit(i, QIcon(pixmap))
+                    self.thumbnail_ready.emit(i, scaled)
             except Exception:
                 pass
         self.finished.emit()
@@ -118,9 +121,11 @@ class FileListWidget(QWidget):
         self._thumb_worker = None
         self._thumb_thread = None
 
-    def _on_thumbnail_ready(self, index: int, icon: QIcon):
+    def _on_thumbnail_ready(self, index: int, image: QImage):
+        """Convert QImage to QIcon on the main thread (QPixmap is not thread-safe)."""
         if 0 <= index < self._list_widget.count():
-            self._list_widget.item(index).setIcon(icon)
+            pixmap = QPixmap.fromImage(image)
+            self._list_widget.item(index).setIcon(QIcon(pixmap))
 
     def _on_thumb_thread_done(self):
         self._thumb_worker = None
