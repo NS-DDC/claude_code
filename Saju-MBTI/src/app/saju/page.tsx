@@ -50,7 +50,40 @@ export default function SajuPage() {
     birthHour: 12
   });
 
+  const validateInput = (input: SajuInput): string | null => {
+    if (!input.birthYear || input.birthYear < 1900 || input.birthYear > 2100) {
+      return '년도를 1900~2100 사이로 입력해주세요.';
+    }
+    if (!input.birthMonth || input.birthMonth < 1 || input.birthMonth > 12) {
+      return '월을 1~12 사이로 입력해주세요.';
+    }
+    const maxDay = new Date(input.birthYear, input.birthMonth, 0).getDate();
+    if (!input.birthDay || input.birthDay < 1 || input.birthDay > maxDay) {
+      return `${input.birthMonth}월은 ${maxDay}일까지입니다. 올바른 일을 입력해주세요.`;
+    }
+    if (input.birthHour === undefined || input.birthHour < 0 || input.birthHour > 23) {
+      return '시를 0~23 사이로 입력해주세요.';
+    }
+    if (isNaN(input.birthYear) || isNaN(input.birthMonth) || isNaN(input.birthDay) || isNaN(input.birthHour)) {
+      return '숫자만 입력해주세요.';
+    }
+    return null;
+  };
+
   const handleCalculate = () => {
+    const myError = validateInput(myInput);
+    if (myError) {
+      alert(myError);
+      return;
+    }
+    if (mode === 'compatibility') {
+      const partnerError = validateInput(partnerInput);
+      if (partnerError) {
+        alert(`상대방 정보: ${partnerError}`);
+        return;
+      }
+    }
+
     if (mode === 'personal') {
       const sajuResult = calculateSaju(myInput);
       const fortune = generateCompleteFortune(myInput);

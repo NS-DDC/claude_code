@@ -1,4 +1,6 @@
 import { MBTIType, Element, DestinyCharacter, CharacterCategory } from '@/types';
+import { sentinelCharacters } from './sentinelCharacters';
+import { explorerCharacters } from './explorerCharacters';
 
 // 40 Hardcoded Characters for NT (Analysts) and NF (Diplomats)
 const hardcodedCharacters: DestinyCharacter[] = [
@@ -17,7 +19,9 @@ const hardcodedCharacters: DestinyCharacter[] = [
     dailyFortuneTemplates: [
       '오늘은 장기 계획을 세우기 좋은 날입니다. 차분히 미래를 그려보세요.',
       '새로운 지식을 흡수하기 완벽한 타이밍입니다. 독서나 학습에 집중하세요.',
-      '당신의 전략적 사고가 빛을 발할 날입니다. 중요한 결정을 내려보세요.'
+      '당신의 전략적 사고가 빛을 발할 날입니다. 중요한 결정을 내려보세요.',
+      '자연 속에서 산책하며 아이디어를 정리해보세요. 숲의 기운이 영감을 줍니다.',
+      '꾸준히 키워온 프로젝트가 결실을 맺기 시작하는 날입니다. 인내가 보상받습니다.'
     ]
   },
   {
@@ -34,7 +38,9 @@ const hardcodedCharacters: DestinyCharacter[] = [
     dailyFortuneTemplates: [
       '당신의 열정이 최고조에 달하는 날입니다. 큰 도전을 시작하세요.',
       '빠른 결단이 필요한 순간입니다. 직관을 믿고 행동하세요.',
-      '혁신적인 아이디어가 떠오를 것입니다. 메모를 준비하세요.'
+      '혁신적인 아이디어가 떠오를 것입니다. 메모를 준비하세요.',
+      '에너지를 집중하면 불가능해 보이는 일도 해낼 수 있는 날입니다.',
+      '번아웃에 주의하세요. 잠시 멈추고 재충전하는 것도 전략입니다.'
     ]
   },
   {
@@ -51,7 +57,9 @@ const hardcodedCharacters: DestinyCharacter[] = [
     dailyFortuneTemplates: [
       '견고한 기반을 다지기 좋은 날입니다. 차근차근 준비하세요.',
       '당신의 신중함이 빛을 발할 것입니다. 세심한 검토가 성공을 부릅니다.',
-      '안정적인 루틴이 최고의 성과를 가져올 날입니다.'
+      '안정적인 루틴이 최고의 성과를 가져올 날입니다.',
+      '토대가 튼튼해야 높이 쌓을 수 있습니다. 기본에 충실하세요.',
+      '오랫동안 준비해온 일이 마침내 움직이기 시작합니다. 흔들리지 마세요.'
     ]
   },
   {
@@ -68,7 +76,9 @@ const hardcodedCharacters: DestinyCharacter[] = [
     dailyFortuneTemplates: [
       '당신의 분석력이 최고조입니다. 중요한 결정을 내리세요.',
       '날카로운 직관이 진실을 밝혀낼 것입니다. 의심스러운 것을 조사하세요.',
-      '논리적 접근이 모든 문제를 해결할 날입니다.'
+      '논리적 접근이 모든 문제를 해결할 날입니다.',
+      '원칙을 세우고 그에 따라 행동하세요. 흔들림 없는 자세가 존경을 받습니다.',
+      '불필요한 것을 과감히 정리하세요. 핵심에 집중할 때 최고의 결과가 나옵니다.'
     ]
   },
   {
@@ -85,7 +95,9 @@ const hardcodedCharacters: DestinyCharacter[] = [
     dailyFortuneTemplates: [
       '깊은 사색이 답을 줄 것입니다. 조용한 시간을 가지세요.',
       '직관과 논리가 완벽하게 조화를 이루는 날입니다.',
-      '숨겨진 패턴을 발견할 수 있습니다. 관찰에 집중하세요.'
+      '숨겨진 패턴을 발견할 수 있습니다. 관찰에 집중하세요.',
+      '물처럼 유연하게 상황에 적응하세요. 변화 속에 기회가 있습니다.',
+      '혼자만의 시간이 최고의 전략을 만들어냅니다. 명상이나 산책을 추천합니다.'
     ]
   },
 
@@ -104,7 +116,9 @@ const hardcodedCharacters: DestinyCharacter[] = [
     dailyFortuneTemplates: [
       '새로운 이론이나 아이디어가 떠오를 것입니다. 기록하세요.',
       '지적 토론이 즐거운 하루가 될 것입니다.',
-      '복잡한 문제를 창의적으로 해결할 수 있는 날입니다.'
+      '복잡한 문제를 창의적으로 해결할 수 있는 날입니다.',
+      '호기심을 따라가세요. 예상치 못한 지식의 보물을 발견할 것입니다.',
+      '사고의 성장이 일어나는 날입니다. 새로운 분야에 도전해보세요.'
     ]
   },
   {
@@ -121,7 +135,9 @@ const hardcodedCharacters: DestinyCharacter[] = [
     dailyFortuneTemplates: [
       '혁신적인 아이디어가 폭발하는 날입니다. 실험을 두려워하지 마세요.',
       '빠른 프로토타이핑이 성공을 가져올 것입니다.',
-      '당신의 열정이 주변을 감염시킬 날입니다.'
+      '당신의 열정이 주변을 감염시킬 날입니다.',
+      '실패를 두려워하지 마세요. 모든 실험은 데이터가 됩니다.',
+      '불꽃같은 영감이 지나간 자리에 놀라운 발명이 남을 것입니다.'
     ]
   },
   {
@@ -138,7 +154,9 @@ const hardcodedCharacters: DestinyCharacter[] = [
     dailyFortuneTemplates: [
       '체계적인 접근이 성공을 가져올 날입니다.',
       '꾸준한 연구가 결실을 맺을 것입니다.',
-      '당신의 논리가 모두를 설득할 수 있는 날입니다.'
+      '당신의 논리가 모두를 설득할 수 있는 날입니다.',
+      '기초를 탄탄히 다지면 어떤 이론도 무너지지 않습니다.',
+      '조급해하지 마세요. 당신의 페이스가 가장 정확한 답을 만듭니다.'
     ]
   },
   {
@@ -155,7 +173,9 @@ const hardcodedCharacters: DestinyCharacter[] = [
     dailyFortuneTemplates: [
       '정밀한 분석이 필요한 날입니다. 디테일에 집중하세요.',
       '당신의 논리가 완벽하게 작동할 것입니다.',
-      '복잡한 시스템을 이해할 수 있는 날입니다.'
+      '복잡한 시스템을 이해할 수 있는 날입니다.',
+      '잘못된 부분을 정확히 짚어낼 수 있는 날입니다. 검증에 집중하세요.',
+      '완벽한 답이 아니어도 괜찮습니다. 때로는 충분히 좋은 것이 최선입니다.'
     ]
   },
   {
@@ -172,7 +192,9 @@ const hardcodedCharacters: DestinyCharacter[] = [
     dailyFortuneTemplates: [
       '유연한 사고가 돌파구를 열어줄 것입니다.',
       '다양한 관점에서 문제를 바라보세요.',
-      '직관과 논리가 조화를 이루는 날입니다.'
+      '직관과 논리가 조화를 이루는 날입니다.',
+      '물처럼 흘러가면 자연스럽게 답을 찾게 됩니다.',
+      '깊은 곳에서 솟아나는 영감을 놓치지 마세요. 조용한 시간이 필요합니다.'
     ]
   },
 
@@ -191,7 +213,9 @@ const hardcodedCharacters: DestinyCharacter[] = [
     dailyFortuneTemplates: [
       '리더십을 발휘하기 좋은 날입니다. 팀을 이끌어보세요.',
       '장기적 성장 계획을 세우기 완벽한 타이밍입니다.',
-      '당신의 비전이 모두를 고무시킬 것입니다.'
+      '당신의 비전이 모두를 고무시킬 것입니다.',
+      '사람을 키우는 것이 가장 위대한 리더십입니다. 후배를 격려하세요.',
+      '뿌리가 깊은 나무가 높이 자랍니다. 기본기를 다시 점검하세요.'
     ]
   },
   {
@@ -208,7 +232,9 @@ const hardcodedCharacters: DestinyCharacter[] = [
     dailyFortuneTemplates: [
       '대담한 도전이 성공을 부를 것입니다. 주저하지 마세요.',
       '당신의 열정이 모든 장애물을 녹일 날입니다.',
-      '빠른 결단이 기회를 잡게 할 것입니다.'
+      '빠른 결단이 기회를 잡게 할 것입니다.',
+      '불같은 의지로 밀어붙이면 오늘 큰 성과를 거둘 수 있습니다.',
+      '때로는 한 발 물러서야 두 발 나아갈 수 있습니다. 전략적 후퇴도 실력입니다.'
     ]
   },
   {
@@ -225,7 +251,9 @@ const hardcodedCharacters: DestinyCharacter[] = [
     dailyFortuneTemplates: [
       '조직을 정비하고 시스템을 개선할 날입니다.',
       '당신의 경영 능력이 빛을 발할 것입니다.',
-      '장기적 안정성을 위한 투자를 고려하세요.'
+      '장기적 안정성을 위한 투자를 고려하세요.',
+      '체계적인 정리가 효율을 극대화하는 날입니다.',
+      '견고한 시스템 위에 세운 계획은 반드시 성과로 돌아옵니다.'
     ]
   },
   {
@@ -242,7 +270,9 @@ const hardcodedCharacters: DestinyCharacter[] = [
     dailyFortuneTemplates: [
       '원칙을 지키는 것이 성공의 열쇠입니다.',
       '단호한 결정이 필요한 순간입니다.',
-      '당신의 리더십이 조직을 바로 세울 것입니다.'
+      '당신의 리더십이 조직을 바로 세울 것입니다.',
+      '쇠는 달궈져야 쓸모가 있습니다. 준비된 만큼 기회를 잡을 수 있습니다.',
+      '공정한 판단이 장기적으로 가장 큰 존경을 받습니다.'
     ]
   },
   {
@@ -259,7 +289,9 @@ const hardcodedCharacters: DestinyCharacter[] = [
     dailyFortuneTemplates: [
       '유연한 전략이 승리를 가져올 것입니다.',
       '상황에 맞게 변화하세요. 고집은 독이 됩니다.',
-      '설득과 협상이 목표 달성의 열쇠입니다.'
+      '설득과 협상이 목표 달성의 열쇠입니다.',
+      '물은 바위도 뚫습니다. 부드러운 접근이 강한 결과를 만듭니다.',
+      '다양한 의견을 듣고 종합하면 최고의 전략이 탄생합니다.'
     ]
   },
 
@@ -278,7 +310,9 @@ const hardcodedCharacters: DestinyCharacter[] = [
     dailyFortuneTemplates: [
       '새로운 프로젝트를 시작하기 좋은 날입니다.',
       '창의적인 아이디어가 샘솟을 것입니다.',
-      '도전을 두려워하지 마세요. 성장의 기회입니다.'
+      '도전을 두려워하지 마세요. 성장의 기회입니다.',
+      '작은 씨앗이 거대한 나무가 됩니다. 오늘 심은 아이디어가 미래를 바꿀 것입니다.',
+      '틀에 박힌 사고를 벗어나세요. 자유로운 발상이 혁신을 만듭니다.'
     ]
   },
   {
@@ -295,7 +329,9 @@ const hardcodedCharacters: DestinyCharacter[] = [
     dailyFortuneTemplates: [
       '급진적인 변화를 시도할 날입니다.',
       '당신의 에너지가 모두를 압도할 것입니다.',
-      '즉흥적 결정이 놀라운 결과를 가져올 것입니다.'
+      '즉흥적 결정이 놀라운 결과를 가져올 것입니다.',
+      '불꽃처럼 번쩍이는 영감을 놓치지 마세요. 지금 바로 행동하세요.',
+      '열정을 전달하되 상대방의 속도도 존중해주세요.'
     ]
   },
   {
@@ -312,7 +348,9 @@ const hardcodedCharacters: DestinyCharacter[] = [
     dailyFortuneTemplates: [
       '아이디어를 구체화할 날입니다. 계획을 세우세요.',
       '창의성과 현실의 균형을 찾을 것입니다.',
-      '실용적인 혁신이 성공을 부를 날입니다.'
+      '실용적인 혁신이 성공을 부를 날입니다.',
+      '꿈을 현실로 바꾸는 데 집중하세요. 실행이 차이를 만듭니다.',
+      '안정적인 환경에서 아이디어가 더 오래 살아남습니다.'
     ]
   },
   {
@@ -329,7 +367,9 @@ const hardcodedCharacters: DestinyCharacter[] = [
     dailyFortuneTemplates: [
       '토론이나 논쟁에서 승리할 날입니다.',
       '당신의 논리가 모두를 설득할 것입니다.',
-      '비판적 분석이 진실을 밝혀낼 것입니다.'
+      '비판적 분석이 진실을 밝혀낼 것입니다.',
+      '날카로운 논리로 핵심을 찌르세요. 진실은 단순합니다.',
+      '때로는 이기는 것보다 상대를 이해하는 것이 더 큰 승리입니다.'
     ]
   },
   {
@@ -346,7 +386,9 @@ const hardcodedCharacters: DestinyCharacter[] = [
     dailyFortuneTemplates: [
       '자유롭게 탐험하세요. 새로운 발견이 기다립니다.',
       '틀을 깨는 사고가 답을 줄 것입니다.',
-      '유연한 접근이 모든 문제를 해결할 날입니다.'
+      '유연한 접근이 모든 문제를 해결할 날입니다.',
+      '흐르는 물처럼 자유롭게 이동하세요. 고여 있으면 기회를 놓칩니다.',
+      '깊이 들어가보세요. 표면 아래 더 큰 세계가 있습니다.'
     ]
   },
 
@@ -365,7 +407,9 @@ const hardcodedCharacters: DestinyCharacter[] = [
     dailyFortuneTemplates: [
       '누군가를 돕거나 위로할 기회가 올 것입니다.',
       '당신의 공감이 큰 변화를 만들어낼 날입니다.',
-      '치유의 에너지가 강한 날입니다. 자신도 돌보세요.'
+      '치유의 에너지가 강한 날입니다. 자신도 돌보세요.',
+      '새싹이 자라듯 당신의 영향력도 조용히 커지고 있습니다.',
+      '자연 속에서 힐링의 시간을 가지세요. 숲의 기운이 당신을 채워줍니다.'
     ]
   },
   {
@@ -382,7 +426,9 @@ const hardcodedCharacters: DestinyCharacter[] = [
     dailyFortuneTemplates: [
       '당신의 열정이 타인에게 영감을 줄 것입니다.',
       '신념을 위해 행동할 날입니다. 두려워하지 마세요.',
-      '따뜻한 에너지로 주변을 밝힐 수 있는 날입니다.'
+      '따뜻한 에너지로 주변을 밝힐 수 있는 날입니다.',
+      '당신의 진심이 사람들의 마음에 불을 지필 날입니다.',
+      '열정과 공감 사이의 균형을 유지하세요. 당신도 충전이 필요합니다.'
     ]
   },
   {
@@ -399,7 +445,9 @@ const hardcodedCharacters: DestinyCharacter[] = [
     dailyFortuneTemplates: [
       '안정적인 환경을 만드는 데 집중하세요.',
       '당신의 존재가 누군가에게 큰 위안이 될 것입니다.',
-      '평화로운 에너지로 갈등을 해소할 수 있는 날입니다.'
+      '평화로운 에너지로 갈등을 해소할 수 있는 날입니다.',
+      '집처럼 편안한 공간을 만들어보세요. 마음의 안정이 모든 것의 시작입니다.',
+      '꾸준한 배려가 깊은 신뢰를 만듭니다. 오늘도 변함없이 따뜻하세요.'
     ]
   },
   {
@@ -416,7 +464,9 @@ const hardcodedCharacters: DestinyCharacter[] = [
     dailyFortuneTemplates: [
       '원칙을 지키는 것이 올바른 선택입니다.',
       '정의를 위해 목소리를 낼 날입니다.',
-      '당신의 신념이 다른 이들에게 영감을 줄 것입니다.'
+      '당신의 신념이 다른 이들에게 영감을 줄 것입니다.',
+      '올바름을 추구하되 자신에게도 관대해지세요.',
+      '단단한 원칙 안에 부드러운 마음을 담으면 최고의 영향력이 됩니다.'
     ]
   },
   {
@@ -433,7 +483,9 @@ const hardcodedCharacters: DestinyCharacter[] = [
     dailyFortuneTemplates: [
       '직관을 따르세요. 보이지 않는 것이 답을 줄 것입니다.',
       '감성적 표현이 큰 울림을 만들어낼 날입니다.',
-      '깊은 성찰의 시간을 가지세요. 통찰이 올 것입니다.'
+      '깊은 성찰의 시간을 가지세요. 통찰이 올 것입니다.',
+      '달빛 아래 깊은 영감이 밀려옵니다. 밤의 고요함을 즐기세요.',
+      '눈에 보이지 않는 흐름을 읽는 당신의 능력이 빛을 발합니다.'
     ]
   },
 
@@ -452,7 +504,9 @@ const hardcodedCharacters: DestinyCharacter[] = [
     dailyFortuneTemplates: [
       '창의적 표현의 날입니다. 글이나 그림으로 감정을 표현하세요.',
       '자연 속에서 영감을 얻을 수 있는 날입니다.',
-      '당신의 순수한 시각이 아름다움을 발견하게 할 것입니다.'
+      '당신의 순수한 시각이 아름다움을 발견하게 할 것입니다.',
+      '들꽃처럼 자유롭게 피어나세요. 비교하지 않는 것이 최고의 아름다움입니다.',
+      '일기를 쓰면 마음이 정리됩니다. 오늘의 감정을 기록해보세요.'
     ]
   },
   {
@@ -469,7 +523,9 @@ const hardcodedCharacters: DestinyCharacter[] = [
     dailyFortuneTemplates: [
       '열정적으로 창작할 날입니다. 감정을 쏟아내세요.',
       '강렬한 영감이 찾아올 것입니다.',
-      '당신의 열정이 걸작을 만들어낼 날입니다.'
+      '당신의 열정이 걸작을 만들어낼 날입니다.',
+      '불꽃같은 감정을 예술로 승화시키세요. 작품이 당신을 치유합니다.',
+      '너무 많이 태우면 재만 남습니다. 적절한 쉼이 더 큰 창작으로 이어집니다.'
     ]
   },
   {
@@ -486,7 +542,9 @@ const hardcodedCharacters: DestinyCharacter[] = [
     dailyFortuneTemplates: [
       '꿈을 현실로 만들 계획을 세우세요.',
       '꾸준한 노력이 결실을 맺을 날입니다.',
-      '안정적인 환경에서 창의성이 꽃필 것입니다.'
+      '안정적인 환경에서 창의성이 꽃필 것입니다.',
+      '마음 편한 곳에서 작업하세요. 편안함이 최고의 창작 환경입니다.',
+      '조금씩 쌓아가는 것의 힘을 믿으세요. 오늘 한 걸음이 미래를 만듭니다.'
     ]
   },
   {
@@ -503,7 +561,9 @@ const hardcodedCharacters: DestinyCharacter[] = [
     dailyFortuneTemplates: [
       '정의를 위해 행동할 날입니다.',
       '당신의 원칙이 옳은 길을 보여줄 것입니다.',
-      '누군가를 보호하거나 도울 기회가 올 것입니다.'
+      '누군가를 보호하거나 도울 기회가 올 것입니다.',
+      '강한 신념은 지키되, 방법에는 유연함을 가지세요.',
+      '순수한 마음이 가장 강한 무기입니다. 자신을 믿으세요.'
     ]
   },
   {
@@ -520,7 +580,9 @@ const hardcodedCharacters: DestinyCharacter[] = [
     dailyFortuneTemplates: [
       '상상력이 최고조에 달하는 날입니다. 창작하세요.',
       '직관을 따르세요. 신비로운 경험이 기다립니다.',
-      '꿈과 현실의 경계에서 영감을 얻을 것입니다.'
+      '꿈과 현실의 경계에서 영감을 얻을 것입니다.',
+      '별빛 아래 떠오르는 이야기를 놓치지 마세요. 당신만의 세계가 완성됩니다.',
+      '감수성은 약점이 아니라 가장 아름다운 재능입니다.'
     ]
   },
 
@@ -539,7 +601,9 @@ const hardcodedCharacters: DestinyCharacter[] = [
     dailyFortuneTemplates: [
       '누군가의 성장을 도울 기회가 올 것입니다.',
       '당신의 조언이 큰 변화를 만들어낼 날입니다.',
-      '리더십을 발휘하여 팀을 성장시키세요.'
+      '리더십을 발휘하여 팀을 성장시키세요.',
+      '나무처럼 뿌리 깊은 관계를 만드세요. 오래 가는 인연이 됩니다.',
+      '남을 키우기 전에 자신도 돌보세요. 건강한 나무가 좋은 열매를 맺습니다.'
     ]
   },
   {
@@ -556,7 +620,9 @@ const hardcodedCharacters: DestinyCharacter[] = [
     dailyFortuneTemplates: [
       '당신의 에너지가 모두를 고무시킬 날입니다.',
       '열정적으로 이끌면 큰 성과를 얻을 것입니다.',
-      '밝은 에너지로 분위기를 바꿀 수 있는 날입니다.'
+      '밝은 에너지로 분위기를 바꿀 수 있는 날입니다.',
+      '태양처럼 따뜻하게 비추되, 자신을 태우지는 마세요.',
+      '진심을 담은 격려 한마디가 누군가의 인생을 바꿀 수 있습니다.'
     ]
   },
   {
@@ -573,7 +639,9 @@ const hardcodedCharacters: DestinyCharacter[] = [
     dailyFortuneTemplates: [
       '갈등을 조정하고 화합을 만들어낼 날입니다.',
       '안정적인 환경을 조성하는 데 집중하세요.',
-      '당신의 중재가 평화를 가져올 것입니다.'
+      '당신의 중재가 평화를 가져올 것입니다.',
+      '공동체를 위한 작은 행동이 큰 변화를 만듭니다.',
+      '안정감을 주는 당신의 존재 자체가 축복입니다.'
     ]
   },
   {
@@ -590,7 +658,9 @@ const hardcodedCharacters: DestinyCharacter[] = [
     dailyFortuneTemplates: [
       '원칙을 지키면서 리더십을 발휘하세요.',
       '정의로운 결정이 존경을 받을 것입니다.',
-      '공정한 판단이 신뢰를 쌓을 날입니다.'
+      '공정한 판단이 신뢰를 쌓을 날입니다.',
+      '올바른 것을 위해 목소리를 내되, 상대의 마음도 헤아리세요.',
+      '강한 원칙과 따뜻한 마음의 조화가 최고의 리더를 만듭니다.'
     ]
   },
   {
@@ -607,7 +677,9 @@ const hardcodedCharacters: DestinyCharacter[] = [
     dailyFortuneTemplates: [
       '유연한 접근으로 관계를 개선할 수 있는 날입니다.',
       '감성적 소통이 큰 성과를 가져올 것입니다.',
-      '적응력을 발휘하여 난관을 돌파하세요.'
+      '적응력을 발휘하여 난관을 돌파하세요.',
+      '물처럼 부드럽게 다가가면 어떤 마음도 열립니다.',
+      '모든 것을 감싸안으려 하지 마세요. 자신의 감정도 소중합니다.'
     ]
   },
 
@@ -626,7 +698,9 @@ const hardcodedCharacters: DestinyCharacter[] = [
     dailyFortuneTemplates: [
       '새로운 경험을 시도하기 좋은 날입니다.',
       '당신의 긍정 에너지가 모두를 밝게 만들 것입니다.',
-      '자유롭게 탐험하세요. 멋진 발견이 기다립니다.'
+      '자유롭게 탐험하세요. 멋진 발견이 기다립니다.',
+      '봄바람처럼 가볍게 움직이세요. 무거운 짐은 내려놓을 때입니다.',
+      '호기심을 따라가면 뜻밖의 행운과 만나게 됩니다.'
     ]
   },
   {
@@ -643,7 +717,9 @@ const hardcodedCharacters: DestinyCharacter[] = [
     dailyFortuneTemplates: [
       '즐거운 만남과 이벤트가 기다리는 날입니다.',
       '당신의 에너지가 분위기를 폭발시킬 것입니다.',
-      '즉흥적인 계획이 최고의 추억을 만들어낼 날입니다.'
+      '즉흥적인 계획이 최고의 추억을 만들어낼 날입니다.',
+      '함께하는 사람들에게 감사를 표현하세요. 관계가 더 깊어집니다.',
+      '너무 많이 태우면 재만 남습니다. 에너지 조절도 능력입니다.'
     ]
   },
   {
@@ -660,7 +736,9 @@ const hardcodedCharacters: DestinyCharacter[] = [
     dailyFortuneTemplates: [
       '편안하게 즐기는 것이 최고의 선택입니다.',
       '작은 행복을 발견할 수 있는 날입니다.',
-      '균형잡힌 삶을 누리세요. 무리하지 마세요.'
+      '균형잡힌 삶을 누리세요. 무리하지 마세요.',
+      '넓은 들판에서 심호흡하듯 여유를 가지세요. 마음이 가벼워집니다.',
+      '소소한 일상 속에서 진정한 행복을 발견하는 날입니다.'
     ]
   },
   {
@@ -677,7 +755,9 @@ const hardcodedCharacters: DestinyCharacter[] = [
     dailyFortuneTemplates: [
       '이상을 향해 행동할 날입니다.',
       '당신의 열정이 변화를 만들어낼 것입니다.',
-      '원칙을 지키면서도 즐겁게 나아가세요.'
+      '원칙을 지키면서도 즐겁게 나아가세요.',
+      '빛나는 목표를 향해 달리되, 과정도 즐기세요.',
+      '당신의 확고한 신념이 다른 이들에게 용기를 줍니다.'
     ]
   },
   {
@@ -694,175 +774,18 @@ const hardcodedCharacters: DestinyCharacter[] = [
     dailyFortuneTemplates: [
       '자유롭게 흐르세요. 새로운 색깔을 발견할 것입니다.',
       '다양한 시도가 멋진 결과를 만들어낼 날입니다.',
-      '예술적 영감이 넘치는 날입니다. 창작하세요.'
+      '예술적 영감이 넘치는 날입니다. 창작하세요.',
+      '물방울 하나가 무지개를 만듭니다. 작은 시도가 큰 변화로 이어집니다.',
+      '감성을 자유롭게 풀어놓으세요. 오늘은 당신이 주인공인 날입니다.'
     ]
   }
 ];
 
-// Template generator for SJ (Sentinels) and SP (Explorers) - 40 characters
-function generateTemplateCharacter(mbti: MBTIType, element: Element): DestinyCharacter {
-  const category: CharacterCategory =
-    ['ISTJ', 'ISFJ', 'ESTJ', 'ESFJ'].includes(mbti) ? 'sentinel' : 'explorer';
-
-  const mbtiTraits: Record<MBTIType, { name: string; emoji: string; desc: string; strengths: string[]; weaknesses: string[]; charms: string[] }> = {
-    // Sentinels
-    'ISTJ': {
-      name: '현실주의자',
-      emoji: '📋',
-      desc: '신뢰할 수 있고 체계적인',
-      strengths: ['책임감', '체계성', '신뢰성', '근면함'],
-      weaknesses: ['융통성 부족', '변화 저항', '감정 표현 미숙'],
-      charms: ['믿음직함', '안정적', '정확함']
-    },
-    'ISFJ': {
-      name: '수호자',
-      emoji: '🛡️',
-      desc: '헌신적이고 따뜻한',
-      strengths: ['헌신', '배려', '세심함', '책임감'],
-      weaknesses: ['자기주장 부족', '과도한 희생', '변화 두려움'],
-      charms: ['따뜻함', '신뢰감', '세심한 배려']
-    },
-    'ESTJ': {
-      name: '경영자',
-      emoji: '💼',
-      desc: '효율적이고 관리에 능한',
-      strengths: ['리더십', '조직력', '실행력', '효율성'],
-      weaknesses: ['권위적', '융통성 부족', '감정 무시'],
-      charms: ['강력한 추진력', '체계적 관리', '결단력']
-    },
-    'ESFJ': {
-      name: '집정관',
-      emoji: '👥',
-      desc: '사교적이고 배려심 깊은',
-      strengths: ['사교성', '배려', '조화 추구', '책임감'],
-      weaknesses: ['타인 의견 의존', '비판 민감', '갈등 회피'],
-      charms: ['인기', '친절함', '조화로운 분위기']
-    },
-    // Explorers
-    'ISTP': {
-      name: '장인',
-      emoji: '🔧',
-      desc: '실용적이고 문제 해결에 능한',
-      strengths: ['실용성', '문제 해결', '적응력', '침착함'],
-      weaknesses: ['감정 표현 부족', '장기 계획 약함', '충동적'],
-      charms: ['쿨함', '능력있음', '침착함']
-    },
-    'ISFP': {
-      name: '모험가',
-      emoji: '🎨',
-      desc: '유연하고 예술적인',
-      strengths: ['예술성', '유연성', '따뜻함', '개방성'],
-      weaknesses: ['우유부단', '계획 부족', '비판 민감'],
-      charms: ['독특한 감성', '따뜻한 매력', '예술적 재능']
-    },
-    'ESTP': {
-      name: '사업가',
-      emoji: '🚀',
-      desc: '활동적이고 모험을 즐기는',
-      strengths: ['행동력', '사교성', '적응력', '순발력'],
-      weaknesses: ['충동적', '장기 계획 부족', '무모함'],
-      charms: ['카리스마', '재미있음', '활력']
-    },
-    'ESFP': {
-      name: '연예인',
-      emoji: '🎭',
-      desc: '즉흥적이고 사람들을 즐겁게 하는',
-      strengths: ['사교성', '즉흥성', '긍정 에너지', '관찰력'],
-      weaknesses: ['계획 부족', '책임감 부족', '충동적'],
-      charms: ['재미', '밝은 에너지', '인기']
-    },
-    // Placeholders for other types (should not reach here)
-    'INTJ': { name: '', emoji: '', desc: '', strengths: [], weaknesses: [], charms: [] },
-    'INTP': { name: '', emoji: '', desc: '', strengths: [], weaknesses: [], charms: [] },
-    'ENTJ': { name: '', emoji: '', desc: '', strengths: [], weaknesses: [], charms: [] },
-    'ENTP': { name: '', emoji: '', desc: '', strengths: [], weaknesses: [], charms: [] },
-    'INFJ': { name: '', emoji: '', desc: '', strengths: [], weaknesses: [], charms: [] },
-    'INFP': { name: '', emoji: '', desc: '', strengths: [], weaknesses: [], charms: [] },
-    'ENFJ': { name: '', emoji: '', desc: '', strengths: [], weaknesses: [], charms: [] },
-    'ENFP': { name: '', emoji: '', desc: '', strengths: [], weaknesses: [], charms: [] }
-  };
-
-  const elementTraits: Record<Element, { prefix: string; emoji: string; desc: string; fortune: string[] }> = {
-    '목': {
-      prefix: '나무',
-      emoji: '🌳',
-      desc: '성장하고 발전하는 에너지',
-      fortune: [
-        '성장과 발전에 좋은 날입니다.',
-        '새로운 시작을 계획하세요.',
-        '꾸준한 노력이 결실을 맺을 것입니다.'
-      ]
-    },
-    '화': {
-      prefix: '불꽃',
-      emoji: '🔥',
-      desc: '열정적이고 활발한 에너지',
-      fortune: [
-        '열정적으로 행동하세요.',
-        '활발한 활동이 성공을 부릅니다.',
-        '에너지가 넘치는 날입니다.'
-      ]
-    },
-    '토': {
-      prefix: '대지',
-      emoji: '🏔️',
-      desc: '안정적이고 신뢰할 수 있는 에너지',
-      fortune: [
-        '안정성을 유지하세요.',
-        '차근차근 진행하는 것이 좋습니다.',
-        '신뢰를 쌓을 수 있는 날입니다.'
-      ]
-    },
-    '금': {
-      prefix: '금속',
-      emoji: '⚔️',
-      desc: '단단하고 원칙적인 에너지',
-      fortune: [
-        '원칙을 지키세요.',
-        '단호한 결정이 필요합니다.',
-        '정확한 판단이 빛을 발할 것입니다.'
-      ]
-    },
-    '수': {
-      prefix: '물',
-      emoji: '💧',
-      desc: '유연하고 적응력 있는 에너지',
-      fortune: [
-        '유연하게 대응하세요.',
-        '흐름을 따라가는 것이 좋습니다.',
-        '적응력이 성공의 열쇠입니다.'
-      ]
-    }
-  };
-
-  const trait = mbtiTraits[mbti];
-  const elemTrait = elementTraits[element];
-
-  return {
-    id: `${mbti}_${element}`,
-    mbti,
-    element,
-    category,
-    name: `${elemTrait.prefix}의 ${trait.name}`,
-    emoji: `${elemTrait.emoji}${trait.emoji}`,
-    description: `${elemTrait.desc}를 가진 ${trait.desc} 성향의 소유자. ${mbti} 타입의 특성과 ${element} 기운이 조화를 이룹니다.`,
-    strengths: [...trait.strengths],
-    weaknesses: [...trait.weaknesses],
-    charmPoints: [...trait.charms],
-    dailyFortuneTemplates: [...elemTrait.fortune]
-  };
-}
-
-// Main character database
+// Main character database: 40 NT/NF hardcoded + 20 Sentinel + 20 Explorer = 80 total
 const allCharacters: DestinyCharacter[] = [
   ...hardcodedCharacters,
-  // Generate 40 template characters for SJ and SP types
-  ...(['ISTJ', 'ISFJ', 'ESTJ', 'ESFJ', 'ISTP', 'ISFP', 'ESTP', 'ESFP'] as MBTIType[])
-    .flatMap(mbti =>
-      (['목', '화', '토', '금', '수'] as Element[]).map(element =>
-        generateTemplateCharacter(mbti, element)
-      )
-    )
+  ...sentinelCharacters,
+  ...explorerCharacters
 ];
 
 /**

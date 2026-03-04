@@ -30,6 +30,7 @@ export default function DailyFortunePage() {
   const [fortune, setFortune] = useState<DailyFortuneResult | null>(null);
   const [showInput, setShowInput] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const [mbti, setMbti] = useState<MBTIType>('INTJ');
   const [birth, setBirth] = useState<SajuInput>({
@@ -39,6 +40,30 @@ export default function DailyFortunePage() {
     birthDay: 1,
     birthHour: 12
   });
+
+  const validateInput = (input: SajuInput): string | null => {
+    if (isNaN(input.birthYear) || isNaN(input.birthMonth) || isNaN(input.birthDay) || isNaN(input.birthHour)) {
+      return '모든 필드를 올바르게 입력해주세요.';
+    }
+    if (!input.birthYear || input.birthYear < 1900 || input.birthYear > 2100) {
+      return '연도는 1900년에서 2100년 사이로 입력해주세요.';
+    }
+    if (!input.birthMonth || input.birthMonth < 1 || input.birthMonth > 12) {
+      return '월은 1월에서 12월 사이로 입력해주세요.';
+    }
+    const daysInMonth = new Date(input.birthYear, input.birthMonth, 0).getDate();
+    if (!input.birthDay || input.birthDay < 1 || input.birthDay > daysInMonth) {
+      return `${input.birthMonth}월의 일자는 1일에서 ${daysInMonth}일 사이로 입력해주세요.`;
+    }
+    if (input.birthHour === undefined || input.birthHour < 0 || input.birthHour > 23) {
+      return '시간은 0시에서 23시 사이로 입력해주세요.';
+    }
+    return null;
+  };
+
+  const validateMBTI = (type: string): boolean => {
+    return mbtiTypes.includes(type as MBTIType);
+  };
 
   useEffect(() => {
     loadFortune();
@@ -71,6 +96,22 @@ export default function DailyFortunePage() {
   };
 
   const handleCalculate = () => {
+    // Clear previous error
+    setErrorMessage(null);
+
+    // Validate MBTI
+    if (!validateMBTI(mbti)) {
+      setErrorMessage('유효한 MBTI 유형을 선택해주세요.');
+      return;
+    }
+
+    // Validate birth input
+    const validationError = validateInput(birth);
+    if (validationError) {
+      setErrorMessage(validationError);
+      return;
+    }
+
     // Calculate element from birth
     const sajuResult = calculateSaju(birth);
     const element = (Object.entries(sajuResult.elements) as [Element, number][])
@@ -218,6 +259,13 @@ export default function DailyFortunePage() {
               </div>
             </div>
           </div>
+
+          {/* Error Message */}
+          {errorMessage && (
+            <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-600 text-sm">
+              {errorMessage}
+            </div>
+          )}
 
           {/* Calculate Button */}
           <motion.button
