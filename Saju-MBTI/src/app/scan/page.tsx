@@ -6,8 +6,25 @@ import { Scan, Camera, Sparkles, Hand, User } from 'lucide-react';
 import GlassCard from '@/components/GlassCard';
 import AdBanner from '@/components/AdBanner';
 import { storage } from '@/lib/storage';
-import { Camera as CapCamera } from '@capacitor/camera';
-import { Share } from '@capacitor/share';
+
+// Capacitor 플러그인을 동적으로 로드 (WebView 호환성)
+const getCapCamera = async () => {
+  try {
+    const mod = await import('@capacitor/camera');
+    return mod.Camera;
+  } catch {
+    return null;
+  }
+};
+
+const getCapShare = async () => {
+  try {
+    const mod = await import('@capacitor/share');
+    return mod.Share;
+  } catch {
+    return null;
+  }
+};
 
 const luckyMessages = [
   { message: '오늘은 행운이 가득한 날입니다!', color: '#FFD700', number: 7 },
@@ -35,9 +52,12 @@ export default function ScanPage() {
 
     // 카메라 권한 요청 및 스트림 시작
     try {
-      const permissions = await CapCamera.requestPermissions();
-      if (permissions.camera === 'granted') {
-        console.log('Camera permission granted');
+      const CapCamera = await getCapCamera();
+      if (CapCamera) {
+        const permissions = await CapCamera.requestPermissions();
+        if (permissions.camera === 'granted') {
+          console.log('Camera permission granted');
+        }
       }
     } catch (error) {
       console.log('Camera permission error:', error);
@@ -415,11 +435,16 @@ export default function ScanPage() {
                       try {
                         const shareText = `✨ 오늘의 운세 스캔 결과 ✨\n\n${fortune.scanType === 'face' ? '👤 관상 분석' : '✋ 손금 분석'}\n\n💬 ${fortune.message}\n\n🎲 행운의 숫자: ${fortune.luckyNumber}\n🎨 행운의 색상: ${fortune.luckyColor}\n\n📅 ${new Date(fortune.date).toLocaleDateString('ko-KR')}\n\n🔮 Saju MBTI - NAMSIK93`;
 
-                        await Share.share({
-                          title: '오늘의 운세 스캔 결과',
-                          text: shareText,
-                          dialogTitle: '친구에게 공유하기'
-                        });
+                        const SharePlugin = await getCapShare();
+                        if (SharePlugin) {
+                          await SharePlugin.share({
+                            title: '오늘의 운세 스캔 결과',
+                            text: shareText,
+                            dialogTitle: '친구에게 공유하기'
+                          });
+                        } else {
+                          throw new Error('Share plugin not available');
+                        }
                       } catch (error) {
                         // Fallback to browser share API
                         if (navigator.share) {

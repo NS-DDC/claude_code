@@ -31,6 +31,7 @@ export default function DestinyPage() {
   const [character, setCharacter] = useState<DestinyCharacter | null>(null);
   const [yearAdvice, setYearAdvice] = useState<string>('');
   const [compatResult, setCompatResult] = useState<DestinyCompatibilityResult | null>(null);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const [myMBTI, setMyMBTI] = useState<MBTIType>('INTJ');
   const [myBirth, setMyBirth] = useState<SajuInput>({
@@ -50,7 +51,62 @@ export default function DestinyPage() {
     birthHour: 14
   });
 
+  const validateInput = (input: SajuInput): string | null => {
+    if (isNaN(input.birthYear) || isNaN(input.birthMonth) || isNaN(input.birthDay) || isNaN(input.birthHour)) {
+      return '모든 필드를 올바르게 입력해주세요.';
+    }
+    if (!input.birthYear || input.birthYear < 1900 || input.birthYear > 2100) {
+      return '연도는 1900년에서 2100년 사이로 입력해주세요.';
+    }
+    if (!input.birthMonth || input.birthMonth < 1 || input.birthMonth > 12) {
+      return '월은 1월에서 12월 사이로 입력해주세요.';
+    }
+    const daysInMonth = new Date(input.birthYear, input.birthMonth, 0).getDate();
+    if (!input.birthDay || input.birthDay < 1 || input.birthDay > daysInMonth) {
+      return `${input.birthMonth}월의 일자는 1일에서 ${daysInMonth}일 사이로 입력해주세요.`;
+    }
+    if (input.birthHour === undefined || input.birthHour < 0 || input.birthHour > 23) {
+      return '시간은 0시에서 23시 사이로 입력해주세요.';
+    }
+    return null;
+  };
+
+  const validateMBTI = (type: string): boolean => {
+    return mbtiTypes.includes(type as MBTIType);
+  };
+
   const handleDiscover = () => {
+    // Clear previous error
+    setErrorMessage(null);
+
+    // Validate my MBTI
+    if (!validateMBTI(myMBTI)) {
+      setErrorMessage('유효한 MBTI 유형을 선택해주세요.');
+      return;
+    }
+
+    // Validate my birth input
+    const myValidationError = validateInput(myBirth);
+    if (myValidationError) {
+      setErrorMessage(myValidationError);
+      return;
+    }
+
+    if (mode === 'compatibility') {
+      // Validate partner MBTI
+      if (!validateMBTI(partnerMBTI)) {
+        setErrorMessage('상대방의 유효한 MBTI 유형을 선택해주세요.');
+        return;
+      }
+
+      // Validate partner birth input
+      const partnerValidationError = validateInput(partnerBirth);
+      if (partnerValidationError) {
+        setErrorMessage(`상대방 정보: ${partnerValidationError}`);
+        return;
+      }
+    }
+
     if (mode === 'character') {
       // Calculate element from birth info
       const sajuResult = calculateSaju(myBirth);
@@ -270,6 +326,13 @@ export default function DestinyPage() {
                 </div>
               </div>
 
+              {/* Error Message */}
+              {errorMessage && (
+                <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-600 text-sm">
+                  {errorMessage}
+                </div>
+              )}
+
               {/* Calculate Button */}
               <motion.button
                 whileHover={{ scale: 1.05 }}
@@ -405,6 +468,13 @@ export default function DestinyPage() {
                   />
                 </div>
               </GlassCard>
+
+              {/* Error Message */}
+              {errorMessage && (
+                <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-600 text-sm">
+                  {errorMessage}
+                </div>
+              )}
 
               {/* Calculate Button */}
               <motion.button
