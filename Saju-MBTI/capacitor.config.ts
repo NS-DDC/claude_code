@@ -5,12 +5,9 @@ const config: CapacitorConfig = {
   appName: 'Saju MBTI',
   webDir: 'out',
   server: {
-    androidScheme: 'https',
-    // WebView 에러 로깅 활성화
-    errorPath: '/error'
+    androidScheme: 'https'
   },
   android: {
-    // WebView 디버깅 허용 (개발 시)
     webContentsDebuggingEnabled: true
   }
 };
