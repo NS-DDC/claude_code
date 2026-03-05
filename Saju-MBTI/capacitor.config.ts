@@ -5,20 +5,13 @@ const config: CapacitorConfig = {
   appName: 'Saju MBTI',
   webDir: 'out',
   server: {
-    androidScheme: 'https'
+    androidScheme: 'https',
+    // WebView 에러 로깅 활성화
+    errorPath: '/error'
   },
-  plugins: {
-    Camera: {
-      permissions: ['camera']
-    },
-    LocalNotifications: {
-      smallIcon: 'ic_stat_icon_config_sample',
-      iconColor: '#FFD700',
-      sound: 'beep.wav'
-    },
-    PushNotifications: {
-      presentationOptions: ['badge', 'sound', 'alert']
-    }
+  android: {
+    // WebView 디버깅 허용 (개발 시)
+    webContentsDebuggingEnabled: true
   }
 };
 

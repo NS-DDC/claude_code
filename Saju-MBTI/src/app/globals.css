@@ -2,6 +2,16 @@
 @tailwind components;
 @tailwind utilities;
 
+/*
+ * Capacitor WebView 호환성: framer-motion이 로드되기 전에
+ * opacity:0 인라인 스타일 때문에 흰 화면이 되는 것을 방지
+ * JS 로드 후 framer-motion이 정상적으로 애니메이션 처리함
+ */
+body:not(.fm-ready) [style*="opacity"] {
+  opacity: 1 !important;
+  transform: none !important;
+}
+
 * {
   box-sizing: border-box;
   padding: 0;
