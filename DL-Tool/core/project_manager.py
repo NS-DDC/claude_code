@@ -15,7 +15,9 @@ SUPPORTED_IMAGE_EXTENSIONS: set[str] = {
     ".jpeg",
     ".png",
     ".bmp",
+    ".tif",
     ".tiff",
+    ".webp",
 }
 
 

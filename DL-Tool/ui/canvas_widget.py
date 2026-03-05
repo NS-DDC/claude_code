@@ -39,6 +39,7 @@ class CanvasWidget(QWidget):
     skip_image_requested = Signal()  # X key pressed to skip
     brush_size_changed_from_canvas = Signal(int)  # +/- key or Ctrl+wheel changed brush size
     edit_mask_requested = Signal(int)  # request to edit mask at index
+    class_switch_requested = Signal(int)  # number key 1-0 → class index 0-9
 
     def __init__(self, parent: QWidget = None):
         super().__init__(parent)
@@ -1056,6 +1057,13 @@ class CanvasWidget(QWidget):
                     new_size = max(5, self._brush_size - 5)
                     self.set_brush_size(new_size)
                     self.brush_size_changed_from_canvas.emit(new_size)
+        else:
+            # Number keys 1-9,0 → quick class switch (0-9)
+            key = event.key()
+            if Qt.Key.Key_1 <= key <= Qt.Key.Key_9:
+                self.class_switch_requested.emit(key - Qt.Key.Key_1)
+            elif key == Qt.Key.Key_0:
+                self.class_switch_requested.emit(9)
 
     def retranslate(self):
         self._placeholder.setText(tr("canvas_no_image"))

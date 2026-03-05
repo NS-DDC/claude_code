@@ -195,6 +195,7 @@ EN = {
     "help_tip_import_labels": "Use File > Import External Labels/GT to import labels and GT from another folder into the current project.",
     "help_tip_label_format": "Label files are saved as 'class_name class_id coords...'. Legacy format (class_id only) is also supported.",
     "help_tip_resume_work": "Opening an image folder automatically loads existing labels/ and gt_image/ data so you can continue editing. In Segmentation mode, selecting an image auto-loads its mask into the brush for immediate editing.",
+    "help_shortcut_class_number": "1~9, 0 : Quick class switch (1=first, 0=tenth)",
     "help_shortcut_brush_plus": "+ / Wheel Up (Seg mode) : Increase brush size (+5)",
     "help_shortcut_brush_minus": "- / Wheel Down (Seg mode) : Decrease brush size (-5)",
     "help_shortcut_zoom_in": "Ctrl+Wheel Up / Ctrl++ : Zoom in",

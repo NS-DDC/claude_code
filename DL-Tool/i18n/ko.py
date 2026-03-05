@@ -197,6 +197,7 @@ KO = {
     "help_tip_import_labels": "파일 > 외부 라벨/GT 가져오기로 다른 곳에서 작업한 라벨과 GT를 현재 프로젝트로 가져올 수 있습니다.",
     "help_tip_label_format": "라벨 파일은 '클래스명 클래스ID 좌표...' 형식으로 저장됩니다. 기존 형식도 호환됩니다.",
     "help_tip_resume_work": "이미지 폴더를 열면 기존 labels/, gt_image/ 작업을 자동으로 불러와 이어서 편집할 수 있습니다. Segmentation 모드에서는 이미지 선택 시 마스크가 자동으로 브러시에 로드되어 바로 수정 가능합니다.",
+    "help_shortcut_class_number": "1~9, 0 : 클래스 빠른 전환 (1=첫번째, 0=열번째)",
     "help_shortcut_brush_plus": "+ / 휠 업 (Seg모드) : 브러시 크기 증가 (+5)",
     "help_shortcut_brush_minus": "- / 휠 다운 (Seg모드) : 브러시 크기 감소 (-5)",
     "help_shortcut_zoom_in": "Ctrl+휠 업 / Ctrl++ : 이미지 확대",

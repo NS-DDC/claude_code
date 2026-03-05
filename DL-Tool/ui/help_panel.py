@@ -81,6 +81,8 @@ class HelpPanel(QWidget):
             "help_shortcut_bbox",
             "help_shortcut_segmentation",
             "",
+            "help_shortcut_class_number",
+            "",
             "help_shortcut_brush_plus",
             "help_shortcut_brush_minus",
             "help_shortcut_zoom_in",

@@ -248,6 +248,7 @@ class MainWindow(QMainWindow):
         self._canvas.label_delete_requested.connect(self._on_delete_instance)
         self._canvas.brush_size_changed_from_canvas.connect(self._on_canvas_brush_size_changed)
         self._canvas.edit_mask_requested.connect(self._on_edit_mask_requested)
+        self._canvas.class_switch_requested.connect(self._on_class_switch_by_number)
 
         # Label list signals
         self._label_list.class_selected.connect(self._on_class_selected)
@@ -689,10 +690,10 @@ class MainWindow(QMainWindow):
         images_dir = Path(self._project.image_dir) / "images"
         if images_dir.exists():
             img_file = Path(self._current_image_path)
-            for ext in ('', '.png', '.jpg', '.bmp', '.tiff'):
-                dest_file = images_dir / (img_file.stem + ext if ext else img_file.name)
-                if dest_file.exists():
-                    dest_file.unlink()
+            stem_lower = img_file.stem.lower()
+            for f in images_dir.iterdir():
+                if f.is_file() and f.stem.lower() == stem_lower:
+                    f.unlink()
 
         # Delete original image file
         if os.path.exists(self._current_image_path):
@@ -853,6 +854,13 @@ class MainWindow(QMainWindow):
     @Slot(float)
     def _on_zoom_changed(self, zoom: float):
         pass  # Could update status bar zoom indicator
+
+    @Slot(int)
+    def _on_class_switch_by_number(self, class_id: int):
+        """Handle number key 1-0 → switch to class 0-9."""
+        if 0 <= class_id < self._label_list.get_class_count():
+            self._label_list.select_class(class_id)
+            self._on_class_selected(class_id)
 
     @Slot(int)
     def _on_class_selected(self, class_id: int):
