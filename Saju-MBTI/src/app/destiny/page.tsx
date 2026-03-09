@@ -1,10 +1,11 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Star, Users, Calendar, Share2, Save } from 'lucide-react';
 import GlassCard from '@/components/GlassCard';
 import FloatingOrbs from '@/components/FloatingOrbs';
+import BirthInfoForm from '@/components/BirthInfoForm';
 import DestinyCharacterCard from '@/components/DestinyCharacterCard';
 import TalismanCard from '@/components/TalismanCard';
 import DestinyCompatibilityDisplay from '@/components/DestinyCompatibilityDisplay';
@@ -13,7 +14,8 @@ import { calculateSaju } from '@/lib/sajuCalculator';
 import { calculateDestinyCompatibility } from '@/lib/destinyCompatibility';
 import { getDestinyYearAdvice, getYearlyLuck } from '@/lib/yearlyLuck';
 import { storage } from '@/lib/storage';
-import { MBTIType, SajuInput, DestinyCharacter, DestinyCompatibilityResult } from '@/types';
+import { validateBirthInfo } from '@/lib/validation';
+import { MBTIType, SajuInput, Element, DestinyCharacter, DestinyCompatibilityResult } from '@/types';
 import { Share } from '@capacitor/share';
 
 type Mode = 'character' | 'compatibility';
@@ -50,59 +52,87 @@ export default function DestinyPage() {
     birthHour: 14
   });
 
-  const handleDiscover = () => {
-    if (mode === 'character') {
-      // Calculate element from birth info
-      const sajuResult = calculateSaju(myBirth);
-      const dominantElement = (Object.entries(sajuResult.elements) as [any, number][])
-        .sort((a, b) => b[1] - a[1])[0][0];
-
-      // Get destiny character
-      const destinyChar = getDestinyCharacter(myMBTI, dominantElement);
-      setCharacter(destinyChar);
-
-      // Get year advice
-      const currentYear = new Date().getFullYear();
-      const advice = getDestinyYearAdvice(currentYear, dominantElement, myMBTI);
-      setYearAdvice(advice);
-
-      // Save to localStorage for daily fortune widget
-      localStorage.setItem('userMBTI', myMBTI);
-      localStorage.setItem('userElement', dominantElement);
-
-      // Save to history
-      storage.add({
-        type: 'destiny',
-        data: {
-          id: `destiny_${Date.now()}`,
-          date: new Date().toISOString(),
-          mbti: myMBTI,
-          birthInfo: myBirth,
-          character: destinyChar,
-          element: dominantElement,
-          yearElement: getYearlyLuck(currentYear).element,
-          yearAdvice: advice
-        }
-      });
-    } else {
-      // Compatibility mode
-      const mySajuResult = calculateSaju(myBirth);
-      const partnerSajuResult = calculateSaju(partnerBirth);
-
-      const myElement = (Object.entries(mySajuResult.elements) as [any, number][])
-        .sort((a, b) => b[1] - a[1])[0][0];
-      const partnerElement = (Object.entries(partnerSajuResult.elements) as [any, number][])
-        .sort((a, b) => b[1] - a[1])[0][0];
-
-      const compat = calculateDestinyCompatibility(myMBTI, myElement, partnerMBTI, partnerElement);
-      setCompatResult(compat);
-
-      // Save to history
-      storage.add({
-        type: 'destiny-compatibility',
-        data: compat
-      });
+  // 프로필 데이터 자동 로드
+  useEffect(() => {
+    const profile = storage.getProfile();
+    if (profile) {
+      setMyMBTI(profile.mbti);
+      setMyBirth(profile.birthInfo);
     }
+  }, []);
+
+  // 캐릭터 발견 (BirthInfoForm에서 호출)
+  const handleCharacterDiscover = (mbti: MBTIType, birth: SajuInput) => {
+    const sajuResult = calculateSaju(birth);
+    const dominantElement = (Object.entries(sajuResult.elements) as [Element, number][])
+      .sort((a, b) => b[1] - a[1])[0][0];
+
+    const destinyChar = getDestinyCharacter(mbti, dominantElement);
+    setCharacter(destinyChar);
+
+    const currentYear = new Date().getFullYear();
+    const advice = getDestinyYearAdvice(currentYear, dominantElement, mbti);
+    setYearAdvice(advice);
+
+    // 프로필 저장/업데이트
+    const existingProfile = storage.getProfile();
+    storage.saveProfile({
+      mbti,
+      element: dominantElement,
+      birthInfo: birth,
+      characterId: destinyChar.id,
+      characterName: destinyChar.name,
+      characterEmoji: destinyChar.emoji,
+      createdAt: existingProfile?.createdAt || new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    });
+
+    storage.add({
+      type: 'destiny',
+      data: {
+        id: `destiny_${Date.now()}`,
+        date: new Date().toISOString(),
+        mbti,
+        birthInfo: birth,
+        character: destinyChar,
+        element: dominantElement,
+        yearElement: getYearlyLuck(currentYear).element,
+        yearAdvice: advice
+      }
+    });
+
+    setShowResult(true);
+  };
+
+  // 궁합 분석
+  const handleCompatDiscover = () => {
+    // 유효성 검사
+    const myValidation = validateBirthInfo(myBirth);
+    if (!myValidation.valid) {
+      alert(Object.values(myValidation.errors).join('\n'));
+      return;
+    }
+    const partnerValidation = validateBirthInfo(partnerBirth);
+    if (!partnerValidation.valid) {
+      alert(Object.values(partnerValidation.errors).join('\n'));
+      return;
+    }
+
+    const mySajuResult = calculateSaju(myBirth);
+    const partnerSajuResult = calculateSaju(partnerBirth);
+
+    const myElement = (Object.entries(mySajuResult.elements) as [Element, number][])
+      .sort((a, b) => b[1] - a[1])[0][0];
+    const partnerElement = (Object.entries(partnerSajuResult.elements) as [Element, number][])
+      .sort((a, b) => b[1] - a[1])[0][0];
+
+    const compat = calculateDestinyCompatibility(myMBTI, myElement, partnerMBTI, partnerElement);
+    setCompatResult(compat);
+
+    storage.add({
+      type: 'destiny-compatibility',
+      data: compat
+    });
 
     setShowResult(true);
   };
@@ -185,101 +215,15 @@ export default function DestinyPage() {
 
           {/* Input Forms */}
           {mode === 'character' ? (
-            /* My Character Form */
+            /* My Character Form - BirthInfoForm 적용 */
             <GlassCard>
               <h2 className="text-xl font-bold mb-4 text-gray-800">내 정보 입력</h2>
-
-              {/* MBTI Selector */}
-              <div className="mb-6">
-                <label className="block text-sm font-semibold text-gray-700 mb-2">MBTI</label>
-                <div className="grid grid-cols-4 gap-2">
-                  {mbtiTypes.map((type) => (
-                    <motion.button
-                      key={type}
-                      whileTap={{ scale: 0.95 }}
-                      onClick={() => setMyMBTI(type)}
-                      className={`py-2 rounded-lg text-sm font-semibold transition-all ${
-                        myMBTI === type
-                          ? 'bg-purple-500 text-white shadow-md'
-                          : 'bg-white/50 text-gray-600 hover:bg-white/70'
-                      }`}
-                    >
-                      {type}
-                    </motion.button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Birth Info */}
-              <div className="mb-6">
-                <label className="block text-sm font-semibold text-gray-700 mb-2">생년월일시</label>
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="text-xs text-gray-600">성별</label>
-                    <select
-                      value={myBirth.gender}
-                      onChange={(e) => setMyBirth({ ...myBirth, gender: e.target.value as 'male' | 'female' })}
-                      className="w-full p-2 rounded-lg bg-white/70 border border-white/50 focus:outline-none focus:ring-2 focus:ring-purple-500"
-                    >
-                      <option value="male">남성</option>
-                      <option value="female">여성</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label className="text-xs text-gray-600">년도</label>
-                    <input
-                      type="number"
-                      value={myBirth.birthYear}
-                      onChange={(e) => setMyBirth({ ...myBirth, birthYear: parseInt(e.target.value) })}
-                      className="w-full p-2 rounded-lg bg-white/70 border border-white/50 focus:outline-none focus:ring-2 focus:ring-purple-500"
-                    />
-                  </div>
-                  <div>
-                    <label className="text-xs text-gray-600">월</label>
-                    <input
-                      type="number"
-                      min="1"
-                      max="12"
-                      value={myBirth.birthMonth}
-                      onChange={(e) => setMyBirth({ ...myBirth, birthMonth: parseInt(e.target.value) })}
-                      className="w-full p-2 rounded-lg bg-white/70 border border-white/50 focus:outline-none focus:ring-2 focus:ring-purple-500"
-                    />
-                  </div>
-                  <div>
-                    <label className="text-xs text-gray-600">일</label>
-                    <input
-                      type="number"
-                      min="1"
-                      max="31"
-                      value={myBirth.birthDay}
-                      onChange={(e) => setMyBirth({ ...myBirth, birthDay: parseInt(e.target.value) })}
-                      className="w-full p-2 rounded-lg bg-white/70 border border-white/50 focus:outline-none focus:ring-2 focus:ring-purple-500"
-                    />
-                  </div>
-                  <div className="col-span-2">
-                    <label className="text-xs text-gray-600">시 (0-23)</label>
-                    <input
-                      type="number"
-                      min="0"
-                      max="23"
-                      value={myBirth.birthHour}
-                      onChange={(e) => setMyBirth({ ...myBirth, birthHour: parseInt(e.target.value) })}
-                      className="w-full p-2 rounded-lg bg-white/70 border border-white/50 focus:outline-none focus:ring-2 focus:ring-purple-500"
-                    />
-                  </div>
-                </div>
-              </div>
-
-              {/* Calculate Button */}
-              <motion.button
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                onClick={handleDiscover}
-                className="w-full bg-gradient-to-r from-purple-500 to-pink-500 text-white font-bold py-4 rounded-xl shadow-lg flex items-center justify-center gap-2"
-              >
-                <Star className="w-6 h-6" />
-                내 운명 캐릭터 발견하기
-              </motion.button>
+              <BirthInfoForm
+                showMBTI={true}
+                onSubmit={handleCharacterDiscover}
+                submitLabel="내 운명 캐릭터 발견하기"
+                submitGradient="from-purple-500 to-pink-500"
+              />
             </GlassCard>
           ) : (
             /* Compatibility Form */
@@ -410,7 +354,7 @@ export default function DestinyPage() {
               <motion.button
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
-                onClick={handleDiscover}
+                onClick={handleCompatDiscover}
                 className="w-full bg-gradient-to-r from-purple-500 to-pink-500 text-white font-bold py-4 rounded-xl shadow-lg flex items-center justify-center gap-2"
               >
                 <Users className="w-6 h-6" />

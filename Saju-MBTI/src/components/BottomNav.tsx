@@ -2,19 +2,22 @@
 
 import { usePathname } from 'next/navigation';
 import Link from 'next/link';
-import { Home, Sparkles, Heart, Star, Settings } from 'lucide-react';
+import { Home, Sparkles, Sun, Star, User } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 const navItems = [
   { name: '홈', path: '/', icon: Home },
   { name: '사주', path: '/saju', icon: Sparkles },
-  { name: 'MBTI', path: '/mbti', icon: Heart },
+  { name: '오늘운세', path: '/daily', icon: Sun },
   { name: '운명', path: '/destiny', icon: Star },
-  { name: '설정', path: '/settings', icon: Settings },
+  { name: '내정보', path: '/profile', icon: User },
 ];
 
 export default function BottomNav() {
   const pathname = usePathname();
+
+  // 온보딩 페이지에서는 네비 숨김
+  if (pathname === '/onboarding') return null;
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 bg-white/40 backdrop-blur-lg border-t border-white/20 pb-safe z-50">
