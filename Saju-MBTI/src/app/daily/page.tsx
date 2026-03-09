@@ -2,21 +2,18 @@
 
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Calendar, Clock, Sparkles, ThumbsUp, ThumbsDown, Heart, ArrowLeft } from 'lucide-react';
-import Link from 'next/link';
+import { Calendar, Clock, Sparkles, ThumbsUp, ThumbsDown, Heart, TrendingUp, TrendingDown, Minus } from 'lucide-react';
 import GlassCard from '@/components/GlassCard';
+import BirthInfoForm from '@/components/BirthInfoForm';
+import FortuneScoreGauge from '@/components/FortuneScoreGauge';
+import SkeletonLoader from '@/components/SkeletonLoader';
 import FloatingOrbs from '@/components/FloatingOrbs';
-import { getTodayFortune } from '@/lib/dailyFortune';
+import { getTodayFortune, getDailyFortune } from '@/lib/dailyFortune';
 import { calculateSaju } from '@/lib/sajuCalculator';
+import { calculateFortuneScore, getWeeklyScores, getWeekDayNames } from '@/lib/fortuneScore';
+import { getDestinyCharacter } from '@/lib/destinyCharacter';
 import { storage } from '@/lib/storage';
-import { MBTIType, SajuInput, DailyFortuneResult, Element } from '@/types';
-
-const mbtiTypes: MBTIType[] = [
-  'INTJ', 'INTP', 'ENTJ', 'ENTP',
-  'INFJ', 'INFP', 'ENFJ', 'ENFP',
-  'ISTJ', 'ISFJ', 'ESTJ', 'ESFJ',
-  'ISTP', 'ISFP', 'ESTP', 'ESFP'
-];
+import { MBTIType, SajuInput, DailyFortuneResult, Element, UserProfile } from '@/types';
 
 const ELEMENT_COLORS: Record<Element, string> = {
   '목': 'from-green-400 to-emerald-500',
@@ -26,19 +23,24 @@ const ELEMENT_COLORS: Record<Element, string> = {
   '수': 'from-blue-400 to-cyan-500'
 };
 
+const TREND_ICONS: Record<string, typeof TrendingUp> = {
+  rising: TrendingUp,
+  stable: Minus,
+  falling: TrendingDown
+};
+
+type ViewTab = 'today' | 'week';
+
 export default function DailyFortunePage() {
   const [fortune, setFortune] = useState<DailyFortuneResult | null>(null);
+  const [profile, setProfile] = useState<UserProfile | null>(null);
   const [showInput, setShowInput] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
-
-  const [mbti, setMbti] = useState<MBTIType>('INTJ');
-  const [birth, setBirth] = useState<SajuInput>({
-    gender: 'male',
-    birthYear: 1990,
-    birthMonth: 1,
-    birthDay: 1,
-    birthHour: 12
-  });
+  const [activeTab, setActiveTab] = useState<ViewTab>('today');
+  const [fortuneScore, setFortuneScore] = useState(0);
+  const [fortuneTrend, setFortuneTrend] = useState<'rising' | 'stable' | 'falling'>('stable');
+  const [weeklyScores, setWeeklyScores] = useState<any[]>([]);
+  const [selectedWeekDay, setSelectedWeekDay] = useState<number | null>(null);
 
   useEffect(() => {
     loadFortune();
@@ -46,19 +48,21 @@ export default function DailyFortunePage() {
 
   const loadFortune = () => {
     try {
-      // Try to load from localStorage
-      const savedMBTI = localStorage.getItem('userMBTI') as MBTIType | null;
-      const savedElement = localStorage.getItem('userElement') as Element | null;
+      const savedProfile = storage.getProfile();
+      setProfile(savedProfile);
 
-      if (savedMBTI && savedElement) {
-        const todayFortune = getTodayFortune(savedMBTI, savedElement);
+      if (savedProfile) {
+        const todayFortune = getTodayFortune(savedProfile.mbti, savedProfile.element);
         setFortune(todayFortune);
 
-        // Save to history
-        storage.add({
-          type: 'daily-fortune',
-          data: todayFortune
-        });
+        const score = calculateFortuneScore(savedProfile);
+        setFortuneScore(score.totalScore);
+        setFortuneTrend(score.trend);
+
+        const weekly = getWeeklyScores(savedProfile);
+        setWeeklyScores(weekly);
+
+        storage.add({ type: 'daily-fortune', data: todayFortune });
       } else {
         setShowInput(true);
       }
@@ -70,26 +74,37 @@ export default function DailyFortunePage() {
     }
   };
 
-  const handleCalculate = () => {
-    // Calculate element from birth
+  const handleFormSubmit = (mbti: MBTIType, birth: SajuInput) => {
     const sajuResult = calculateSaju(birth);
     const element = (Object.entries(sajuResult.elements) as [Element, number][])
       .sort((a, b) => b[1] - a[1])[0][0];
+    const destinyChar = getDestinyCharacter(mbti, element);
 
-    // Get fortune
+    const newProfile: UserProfile = {
+      mbti,
+      element,
+      birthInfo: birth,
+      characterId: destinyChar.id,
+      characterName: destinyChar.name,
+      characterEmoji: destinyChar.emoji,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    };
+
+    storage.saveProfile(newProfile);
+    setProfile(newProfile);
+
     const todayFortune = getTodayFortune(mbti, element);
     setFortune(todayFortune);
 
-    // Save to localStorage
-    localStorage.setItem('userMBTI', mbti);
-    localStorage.setItem('userElement', element);
+    const score = calculateFortuneScore(newProfile);
+    setFortuneScore(score.totalScore);
+    setFortuneTrend(score.trend);
 
-    // Save to history
-    storage.add({
-      type: 'daily-fortune',
-      data: todayFortune
-    });
+    const weekly = getWeeklyScores(newProfile);
+    setWeeklyScores(weekly);
 
+    storage.add({ type: 'daily-fortune', data: todayFortune });
     setShowInput(false);
   };
 
@@ -100,12 +115,18 @@ export default function DailyFortunePage() {
     weekday: 'long'
   });
 
+  // 요일 인덱스 (월=0 ~ 일=6)
+  const todayDayIndex = (() => {
+    const d = new Date().getDay();
+    return d === 0 ? 6 : d - 1;
+  })();
+
   if (isLoading) {
     return (
       <div className="container mx-auto px-4 py-8 max-w-lg pb-24">
-        <div className="flex items-center justify-center h-96">
-          <Sparkles className="w-12 h-12 text-purple-500 animate-spin" />
-        </div>
+        <SkeletonLoader type="gauge" />
+        <div className="mt-6"><SkeletonLoader type="card" /></div>
+        <div className="mt-4"><SkeletonLoader type="card" /></div>
       </div>
     );
   }
@@ -118,18 +139,14 @@ export default function DailyFortunePage() {
       <motion.div
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="mb-8"
+        className="mb-6"
       >
-        <Link href="/" className="inline-flex items-center gap-2 text-gray-600 mb-4 hover:text-gray-800">
-          <ArrowLeft className="w-5 h-5" />
-          <span>홈으로</span>
-        </Link>
-        <h1 className="text-4xl font-bold mb-2 bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
+        <h1 className="text-3xl font-bold mb-2 bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
           오늘의 운세
         </h1>
         <div className="flex items-center gap-2 text-gray-600">
-          <Calendar className="w-5 h-5" />
-          <p>{today}</p>
+          <Calendar className="w-4 h-4" />
+          <p className="text-sm">{today}</p>
         </div>
       </motion.div>
 
@@ -137,218 +154,267 @@ export default function DailyFortunePage() {
         /* Input Form */
         <GlassCard>
           <h2 className="text-xl font-bold mb-4 text-gray-800">정보 입력</h2>
-
-          {/* MBTI Selector */}
-          <div className="mb-6">
-            <label className="block text-sm font-semibold text-gray-700 mb-2">MBTI</label>
-            <div className="grid grid-cols-4 gap-2">
-              {mbtiTypes.map((type) => (
-                <motion.button
-                  key={type}
-                  whileTap={{ scale: 0.95 }}
-                  onClick={() => setMbti(type)}
-                  className={`py-2 rounded-lg text-sm font-semibold transition-all ${
-                    mbti === type
-                      ? 'bg-purple-500 text-white shadow-md'
-                      : 'bg-white/50 text-gray-600 hover:bg-white/70'
-                  }`}
-                >
-                  {type}
-                </motion.button>
-              ))}
-            </div>
-          </div>
-
-          {/* Birth Info */}
-          <div className="mb-6">
-            <label className="block text-sm font-semibold text-gray-700 mb-2">생년월일시</label>
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="text-xs text-gray-600">성별</label>
-                <select
-                  value={birth.gender}
-                  onChange={(e) => setBirth({ ...birth, gender: e.target.value as 'male' | 'female' })}
-                  className="w-full p-2 rounded-lg bg-white/70 border border-white/50 focus:outline-none focus:ring-2 focus:ring-purple-500"
-                >
-                  <option value="male">남성</option>
-                  <option value="female">여성</option>
-                </select>
-              </div>
-              <div>
-                <label className="text-xs text-gray-600">년도</label>
-                <input
-                  type="number"
-                  value={birth.birthYear}
-                  onChange={(e) => setBirth({ ...birth, birthYear: parseInt(e.target.value) })}
-                  className="w-full p-2 rounded-lg bg-white/70 border border-white/50 focus:outline-none focus:ring-2 focus:ring-purple-500"
-                />
-              </div>
-              <div>
-                <label className="text-xs text-gray-600">월</label>
-                <input
-                  type="number"
-                  min="1"
-                  max="12"
-                  value={birth.birthMonth}
-                  onChange={(e) => setBirth({ ...birth, birthMonth: parseInt(e.target.value) })}
-                  className="w-full p-2 rounded-lg bg-white/70 border border-white/50 focus:outline-none focus:ring-2 focus:ring-purple-500"
-                />
-              </div>
-              <div>
-                <label className="text-xs text-gray-600">일</label>
-                <input
-                  type="number"
-                  min="1"
-                  max="31"
-                  value={birth.birthDay}
-                  onChange={(e) => setBirth({ ...birth, birthDay: parseInt(e.target.value) })}
-                  className="w-full p-2 rounded-lg bg-white/70 border border-white/50 focus:outline-none focus:ring-2 focus:ring-purple-500"
-                />
-              </div>
-              <div className="col-span-2">
-                <label className="text-xs text-gray-600">시 (0-23)</label>
-                <input
-                  type="number"
-                  min="0"
-                  max="23"
-                  value={birth.birthHour}
-                  onChange={(e) => setBirth({ ...birth, birthHour: parseInt(e.target.value) })}
-                  className="w-full p-2 rounded-lg bg-white/70 border border-white/50 focus:outline-none focus:ring-2 focus:ring-purple-500"
-                />
-              </div>
-            </div>
-          </div>
-
-          {/* Calculate Button */}
-          <motion.button
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            onClick={handleCalculate}
-            className="w-full bg-gradient-to-r from-purple-500 to-pink-500 text-white font-bold py-4 rounded-xl shadow-lg flex items-center justify-center gap-2"
-          >
-            <Sparkles className="w-6 h-6" />
-            오늘의 운세 보기
-          </motion.button>
+          <BirthInfoForm
+            onSubmit={handleFormSubmit}
+            submitLabel="오늘의 운세 보기"
+            submitGradient="from-purple-500 to-pink-500"
+          />
         </GlassCard>
       ) : (
-        /* Fortune Display */
         <div className="space-y-6">
-          {/* Character Card */}
-          <motion.div
-            initial={{ scale: 0 }}
-            animate={{ scale: 1 }}
-            transition={{ type: 'spring', duration: 0.6 }}
-            className={`bg-gradient-to-br ${ELEMENT_COLORS[fortune.character.element]} rounded-2xl p-8 text-center shadow-xl`}
-          >
-            <div className="text-8xl mb-4">{fortune.character.emoji}</div>
-            <h2 className="text-2xl font-bold text-white mb-2">{fortune.character.name}</h2>
-            <div className="flex justify-center gap-2">
-              <span className="px-3 py-1 bg-white/30 backdrop-blur-sm rounded-full text-sm text-white font-semibold">
-                {fortune.character.mbti}
-              </span>
-              <span className="px-3 py-1 bg-white/30 backdrop-blur-sm rounded-full text-sm text-white font-semibold">
-                {fortune.character.element}
-              </span>
-            </div>
-          </motion.div>
-
-          {/* Fortune Message */}
-          <GlassCard>
-            <div className="flex items-center gap-2 mb-4">
-              <Sparkles className="w-6 h-6 text-yellow-600" />
-              <h3 className="text-xl font-bold text-gray-800">오늘의 메시지</h3>
-            </div>
-            <p className="text-lg text-gray-700 leading-relaxed">
-              {fortune.fortuneMessage}
-            </p>
-          </GlassCard>
-
-          {/* Lucky Elements */}
-          <div className="grid grid-cols-2 gap-4">
-            {/* Lucky Time */}
-            <GlassCard className="text-center">
-              <Clock className="w-8 h-8 text-blue-600 mx-auto mb-2" />
-              <h4 className="font-semibold text-gray-800 mb-1">행운의 시간</h4>
-              <p className="text-sm text-gray-600">{fortune.luckyTime}</p>
-            </GlassCard>
-
-            {/* Lucky Number */}
-            <GlassCard className="text-center">
-              <Sparkles className="w-8 h-8 text-yellow-600 mx-auto mb-2" />
-              <h4 className="font-semibold text-gray-800 mb-1">행운의 숫자</h4>
-              <p className="text-2xl font-bold text-purple-600">{fortune.luckyNumber}</p>
-            </GlassCard>
+          {/* Tab Selector */}
+          <div className="flex gap-2 bg-white/30 backdrop-blur-md rounded-xl p-1 border border-white/20">
+            <button
+              onClick={() => setActiveTab('today')}
+              className={`flex-1 py-3 rounded-lg font-semibold text-sm transition-all ${
+                activeTab === 'today'
+                  ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white shadow-md'
+                  : 'text-gray-600 hover:bg-white/30'
+              }`}
+            >
+              오늘
+            </button>
+            <button
+              onClick={() => setActiveTab('week')}
+              className={`flex-1 py-3 rounded-lg font-semibold text-sm transition-all ${
+                activeTab === 'week'
+                  ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white shadow-md'
+                  : 'text-gray-600 hover:bg-white/30'
+              }`}
+            >
+              이번 주
+            </button>
           </div>
 
-          {/* Lucky Color */}
-          <GlassCard className="text-center">
-            <h4 className="font-semibold text-gray-800 mb-3">행운의 색상</h4>
-            <div className="flex items-center justify-center gap-3">
-              <div
-                className="w-12 h-12 rounded-full shadow-lg border-2 border-white"
-                style={{ backgroundColor: fortune.luckyColor }}
-              />
-              <p className="text-lg font-semibold text-gray-700">{fortune.luckyColor}</p>
-            </div>
-          </GlassCard>
+          {activeTab === 'today' ? (
+            /* TODAY TAB */
+            <>
+              {/* Fortune Score Gauge */}
+              <motion.div
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+              >
+                <GlassCard hover={false} className="text-center">
+                  <FortuneScoreGauge score={fortuneScore} size="lg" />
+                </GlassCard>
+              </motion.div>
 
-          {/* Lucky Action */}
-          <GlassCard>
-            <div className="flex items-center gap-2 mb-3">
-              <ThumbsUp className="w-6 h-6 text-green-600" />
-              <h4 className="font-semibold text-gray-800">오늘 하면 좋은 일</h4>
-            </div>
-            <p className="text-gray-700 bg-green-50 p-4 rounded-lg border border-green-200">
-              {fortune.luckyAction}
-            </p>
-          </GlassCard>
+              {/* Character Card */}
+              <motion.div
+                initial={{ scale: 0.9, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                transition={{ delay: 0.2 }}
+                className={`bg-gradient-to-br ${ELEMENT_COLORS[fortune.character.element]} rounded-2xl p-6 text-center shadow-xl`}
+              >
+                <div className="text-7xl mb-3">{fortune.character.emoji}</div>
+                <h2 className="text-xl font-bold text-white mb-2">{fortune.character.name}</h2>
+                <div className="flex justify-center gap-2">
+                  <span className="px-3 py-1 bg-white/30 backdrop-blur-sm rounded-full text-sm text-white font-semibold">
+                    {fortune.character.mbti}
+                  </span>
+                  <span className="px-3 py-1 bg-white/30 backdrop-blur-sm rounded-full text-sm text-white font-semibold">
+                    {fortune.character.element}
+                  </span>
+                </div>
+              </motion.div>
 
-          {/* Avoid Action */}
-          <GlassCard>
-            <div className="flex items-center gap-2 mb-3">
-              <ThumbsDown className="w-6 h-6 text-red-600" />
-              <h4 className="font-semibold text-gray-800">오늘 피하면 좋은 일</h4>
-            </div>
-            <p className="text-gray-700 bg-red-50 p-4 rounded-lg border border-red-200">
-              {fortune.avoidAction}
-            </p>
-          </GlassCard>
+              {/* Fortune Message */}
+              <GlassCard>
+                <div className="flex items-center gap-2 mb-3">
+                  <Sparkles className="w-5 h-5 text-yellow-600" />
+                  <h3 className="text-lg font-bold text-gray-800">오늘의 메시지</h3>
+                </div>
+                <p className="text-gray-700 leading-relaxed">
+                  {fortune.fortuneMessage}
+                </p>
+              </GlassCard>
 
-          {/* Compatible Character */}
-          <GlassCard>
-            <div className="flex items-center gap-2 mb-4">
-              <Heart className="w-6 h-6 text-pink-600" />
-              <h4 className="font-semibold text-gray-800">오늘의 궁합 파트너</h4>
-            </div>
-            <div className="bg-gradient-to-br from-pink-50 to-purple-50 rounded-xl p-4 border border-pink-200">
-              <div className="flex items-center gap-4">
-                <div className="text-5xl">{fortune.compatibleCharacter.emoji}</div>
-                <div>
-                  <h5 className="font-bold text-gray-800 mb-1">
-                    {fortune.compatibleCharacter.name}
-                  </h5>
-                  <div className="flex gap-2">
-                    <span className="px-2 py-1 bg-white/70 rounded-full text-xs font-semibold text-purple-700">
-                      {fortune.compatibleCharacter.mbti}
-                    </span>
-                    <span className="px-2 py-1 bg-white/70 rounded-full text-xs font-semibold text-indigo-700">
-                      {fortune.compatibleCharacter.element}
-                    </span>
+              {/* Lucky Elements Grid */}
+              <div className="grid grid-cols-3 gap-3">
+                <GlassCard className="text-center !p-3">
+                  <Clock className="w-6 h-6 text-blue-600 mx-auto mb-1" />
+                  <h4 className="font-semibold text-gray-800 text-xs mb-1">행운 시간</h4>
+                  <p className="text-xs text-gray-600">{fortune.luckyTime}</p>
+                </GlassCard>
+                <GlassCard className="text-center !p-3">
+                  <Sparkles className="w-6 h-6 text-yellow-600 mx-auto mb-1" />
+                  <h4 className="font-semibold text-gray-800 text-xs mb-1">행운 숫자</h4>
+                  <p className="text-xl font-bold text-purple-600">{fortune.luckyNumber}</p>
+                </GlassCard>
+                <GlassCard className="text-center !p-3">
+                  <div
+                    className="w-8 h-8 rounded-full mx-auto mb-1 shadow border-2 border-white"
+                    style={{ backgroundColor: fortune.luckyColor.hex }}
+                  />
+                  <h4 className="font-semibold text-gray-800 text-xs mb-1">행운 색상</h4>
+                  <p className="text-xs text-gray-600">{fortune.luckyColor.name}</p>
+                </GlassCard>
+              </div>
+
+              {/* Actions */}
+              <div className="grid grid-cols-2 gap-3">
+                <GlassCard className="!p-4">
+                  <div className="flex items-center gap-2 mb-2">
+                    <ThumbsUp className="w-5 h-5 text-green-600" />
+                    <h4 className="font-semibold text-gray-800 text-sm">하면 좋은 일</h4>
+                  </div>
+                  <p className="text-sm text-gray-700 bg-green-50/50 p-3 rounded-lg">
+                    {fortune.luckyAction}
+                  </p>
+                </GlassCard>
+                <GlassCard className="!p-4">
+                  <div className="flex items-center gap-2 mb-2">
+                    <ThumbsDown className="w-5 h-5 text-red-600" />
+                    <h4 className="font-semibold text-gray-800 text-sm">피할 일</h4>
+                  </div>
+                  <p className="text-sm text-gray-700 bg-red-50/50 p-3 rounded-lg">
+                    {fortune.avoidAction}
+                  </p>
+                </GlassCard>
+              </div>
+
+              {/* Compatible Character */}
+              <GlassCard>
+                <div className="flex items-center gap-2 mb-3">
+                  <Heart className="w-5 h-5 text-pink-600" />
+                  <h4 className="font-semibold text-gray-800">오늘의 궁합 파트너</h4>
+                </div>
+                <div className="bg-gradient-to-br from-pink-50/50 to-purple-50/50 rounded-xl p-4 border border-pink-200/50">
+                  <div className="flex items-center gap-4">
+                    <div className="text-4xl">{fortune.compatibleCharacter.emoji}</div>
+                    <div>
+                      <h5 className="font-bold text-gray-800 text-sm mb-1">
+                        {fortune.compatibleCharacter.name}
+                      </h5>
+                      <div className="flex gap-1">
+                        <span className="px-2 py-0.5 bg-white/70 rounded-full text-xs font-semibold text-purple-700">
+                          {fortune.compatibleCharacter.mbti}
+                        </span>
+                        <span className="px-2 py-0.5 bg-white/70 rounded-full text-xs font-semibold text-indigo-700">
+                          {fortune.compatibleCharacter.element}
+                        </span>
+                      </div>
+                    </div>
                   </div>
                 </div>
-              </div>
-              <p className="text-sm text-gray-600 mt-3">
-                오늘은 이 캐릭터와 특별한 인연이 있을 수 있습니다!
-              </p>
-            </div>
-          </GlassCard>
+              </GlassCard>
+            </>
+          ) : (
+            /* WEEK TAB */
+            <>
+              {/* Weekly Score Cards */}
+              <GlassCard hover={false}>
+                <h3 className="font-bold text-gray-800 mb-4">이번 주 운세 흐름</h3>
+                <div className="flex gap-2 overflow-x-auto pb-2">
+                  {weeklyScores.map((dayScore, index) => {
+                    const dayNames = getWeekDayNames();
+                    const isToday = index === todayDayIndex;
+                    const TrendIcon = TREND_ICONS[dayScore.trend];
+                    const scoreColor = dayScore.totalScore >= 70 ? 'text-green-600' :
+                                       dayScore.totalScore >= 50 ? 'text-yellow-600' :
+                                       dayScore.totalScore >= 30 ? 'text-orange-600' : 'text-red-600';
 
-          {/* Change Button */}
+                    return (
+                      <motion.button
+                        key={index}
+                        onClick={() => setSelectedWeekDay(selectedWeekDay === index ? null : index)}
+                        whileTap={{ scale: 0.95 }}
+                        className={`flex-shrink-0 w-16 rounded-xl p-3 text-center transition-all ${
+                          isToday
+                            ? 'bg-gradient-to-b from-purple-500 to-pink-500 text-white shadow-lg'
+                            : selectedWeekDay === index
+                              ? 'bg-white/60 border-2 border-purple-300'
+                              : 'bg-white/30 border border-white/20'
+                        }`}
+                      >
+                        <p className={`text-xs font-semibold mb-1 ${isToday ? 'text-white' : 'text-gray-500'}`}>
+                          {dayNames[index]}
+                        </p>
+                        <p className={`text-xl font-bold mb-1 ${isToday ? 'text-white' : scoreColor}`}>
+                          {dayScore.totalScore}
+                        </p>
+                        <TrendIcon className={`w-4 h-4 mx-auto ${isToday ? 'text-white/80' : 'text-gray-400'}`} />
+                        <p className={`text-[10px] mt-0.5 ${isToday ? 'text-white/80' : 'text-gray-400'}`}>
+                          {dayScore.level}
+                        </p>
+                      </motion.button>
+                    );
+                  })}
+                </div>
+              </GlassCard>
+
+              {/* Weekly Chart Bar */}
+              <GlassCard hover={false}>
+                <h3 className="font-bold text-gray-800 mb-4">운세 차트</h3>
+                <div className="flex items-end gap-2 h-32">
+                  {weeklyScores.map((dayScore, index) => {
+                    const dayNames = getWeekDayNames();
+                    const isToday = index === todayDayIndex;
+                    const height = `${dayScore.totalScore}%`;
+                    const scoreColor = dayScore.totalScore >= 70 ? 'from-green-400 to-emerald-500' :
+                                       dayScore.totalScore >= 50 ? 'from-yellow-400 to-amber-500' :
+                                       dayScore.totalScore >= 30 ? 'from-orange-400 to-red-400' : 'from-red-400 to-rose-500';
+
+                    return (
+                      <div key={index} className="flex-1 flex flex-col items-center">
+                        <motion.div
+                          initial={{ height: 0 }}
+                          animate={{ height }}
+                          transition={{ delay: index * 0.1, duration: 0.6 }}
+                          className={`w-full rounded-t-lg bg-gradient-to-t ${scoreColor} ${
+                            isToday ? 'ring-2 ring-purple-400 ring-offset-1' : ''
+                          }`}
+                          style={{ minHeight: '4px' }}
+                        />
+                        <p className={`text-[10px] mt-1 font-semibold ${isToday ? 'text-purple-600' : 'text-gray-400'}`}>
+                          {dayNames[index]}
+                        </p>
+                      </div>
+                    );
+                  })}
+                </div>
+              </GlassCard>
+
+              {/* Weekly Summary */}
+              <GlassCard hover={false}>
+                <h3 className="font-bold text-gray-800 mb-3">주간 분석</h3>
+                {(() => {
+                  const avg = Math.round(weeklyScores.reduce((s, d) => s + d.totalScore, 0) / 7);
+                  const best = weeklyScores.reduce((max, d, i) => d.totalScore > max.score ? { score: d.totalScore, day: i } : max, { score: 0, day: 0 });
+                  const worst = weeklyScores.reduce((min, d, i) => d.totalScore < min.score ? { score: d.totalScore, day: i } : min, { score: 100, day: 0 });
+                  const dayNames = getWeekDayNames();
+
+                  return (
+                    <div className="space-y-3">
+                      <div className="flex justify-between items-center bg-white/30 rounded-lg p-3">
+                        <span className="text-sm text-gray-600">주간 평균</span>
+                        <span className="font-bold text-lg text-purple-600">{avg}점</span>
+                      </div>
+                      <div className="flex justify-between items-center bg-green-50/50 rounded-lg p-3">
+                        <span className="text-sm text-gray-600">최고의 날</span>
+                        <span className="font-bold text-green-600">
+                          {dayNames[best.day]}요일 ({best.score}점)
+                        </span>
+                      </div>
+                      <div className="flex justify-between items-center bg-red-50/50 rounded-lg p-3">
+                        <span className="text-sm text-gray-600">주의할 날</span>
+                        <span className="font-bold text-red-600">
+                          {dayNames[worst.day]}요일 ({worst.score}점)
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })()}
+              </GlassCard>
+            </>
+          )}
+
+          {/* Change Info Button */}
           <motion.button
-            whileHover={{ scale: 1.05 }}
+            whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.95 }}
             onClick={() => setShowInput(true)}
-            className="w-full bg-white/50 backdrop-blur-md text-gray-700 font-bold py-3 px-6 rounded-xl shadow-lg"
+            className="w-full bg-white/40 backdrop-blur-md text-gray-600 font-semibold py-3 rounded-xl border border-white/30 text-sm"
           >
             다른 정보로 보기
           </motion.button>

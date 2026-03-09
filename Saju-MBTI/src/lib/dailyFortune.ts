@@ -1,4 +1,4 @@
-import { MBTIType, Element, DestinyCharacter, DailyFortuneResult } from '@/types';
+import { MBTIType, Element, DestinyCharacter, DailyFortuneResult, LuckyColor } from '@/types';
 import { getDestinyCharacter, getAllCharacters } from './destinyCharacter';
 import { SeededRandom } from './seedRandom';
 import { calculateDestinyCompatibility } from './destinyCompatibility';
@@ -20,14 +20,39 @@ const LUCKY_TIMES = [
 ];
 
 /**
- * Lucky colors by element
+ * Lucky colors by element (hex + Korean name)
  */
-const ELEMENT_COLORS: Record<Element, string[]> = {
-  '목': ['초록색', '청록색', '연두색', '올리브색'],
-  '화': ['빨간색', '주황색', '분홍색', '자주색'],
-  '토': ['노란색', '갈색', '베이지색', '황토색'],
-  '금': ['흰색', '은색', '금색', '회색'],
-  '수': ['파란색', '검은색', '남색', '청색']
+const ELEMENT_COLORS: Record<Element, LuckyColor[]> = {
+  '목': [
+    { hex: '#00C851', name: '초록색' },
+    { hex: '#00BFA5', name: '청록색' },
+    { hex: '#76FF03', name: '연두색' },
+    { hex: '#827717', name: '올리브색' }
+  ],
+  '화': [
+    { hex: '#FF1744', name: '빨간색' },
+    { hex: '#FF6D00', name: '주황색' },
+    { hex: '#FF80AB', name: '분홍색' },
+    { hex: '#AA00FF', name: '자주색' }
+  ],
+  '토': [
+    { hex: '#FFD600', name: '노란색' },
+    { hex: '#795548', name: '갈색' },
+    { hex: '#D7CCC8', name: '베이지색' },
+    { hex: '#BF8C00', name: '황토색' }
+  ],
+  '금': [
+    { hex: '#FFFFFF', name: '흰색' },
+    { hex: '#B0BEC5', name: '은색' },
+    { hex: '#FFD700', name: '금색' },
+    { hex: '#9E9E9E', name: '회색' }
+  ],
+  '수': [
+    { hex: '#2196F3', name: '파란색' },
+    { hex: '#212121', name: '검은색' },
+    { hex: '#1A237E', name: '남색' },
+    { hex: '#0097A7', name: '청색' }
+  ]
 };
 
 /**
@@ -164,7 +189,7 @@ function generateAvoidAction(element: Element, rng: SeededRandom): string {
 /**
  * Generate lucky color
  */
-function generateLuckyColor(element: Element, rng: SeededRandom): string {
+function generateLuckyColor(element: Element, rng: SeededRandom): LuckyColor {
   const colors = ELEMENT_COLORS[element];
   return rng.choice(colors);
 }

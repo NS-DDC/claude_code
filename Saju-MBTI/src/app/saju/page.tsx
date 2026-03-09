@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Sparkles, Users, ArrowRight, Calendar, Star } from 'lucide-react';
 import GlassCard from '@/components/GlassCard';
@@ -11,6 +11,7 @@ import { calculateSaju, calculateSajuCompatibility } from '@/lib/sajuCalculator'
 import { generateCompleteFortune } from '@/lib/fortuneLogic';
 import { getYearlyLuck, analyzeYearElementCompatibility } from '@/lib/yearlyLuck';
 import { storage } from '@/lib/storage';
+import { validateBirthInfo } from '@/lib/validation';
 import { SajuInput, Element } from '@/types';
 import { Share } from '@capacitor/share';
 
@@ -50,7 +51,29 @@ export default function SajuPage() {
     birthHour: 12
   });
 
+  // 프로필 데이터 자동 로드
+  useEffect(() => {
+    const profile = storage.getProfile();
+    if (profile) {
+      setMyInput(profile.birthInfo);
+    }
+  }, []);
+
   const handleCalculate = () => {
+    // 유효성 검사
+    const myValidation = validateBirthInfo(myInput);
+    if (!myValidation.valid) {
+      alert(Object.values(myValidation.errors).join('\n'));
+      return;
+    }
+    if (mode === 'compatibility') {
+      const partnerValidation = validateBirthInfo(partnerInput);
+      if (!partnerValidation.valid) {
+        alert(Object.values(partnerValidation.errors).join('\n'));
+        return;
+      }
+    }
+
     if (mode === 'personal') {
       const sajuResult = calculateSaju(myInput);
       const fortune = generateCompleteFortune(myInput);

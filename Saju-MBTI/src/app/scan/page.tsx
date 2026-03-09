@@ -6,6 +6,7 @@ import { Scan, Camera, Sparkles, Hand, User } from 'lucide-react';
 import GlassCard from '@/components/GlassCard';
 import AdBanner from '@/components/AdBanner';
 import { storage } from '@/lib/storage';
+import { getTodayFortune } from '@/lib/dailyFortune';
 import { Camera as CapCamera } from '@capacitor/camera';
 import { Share } from '@capacitor/share';
 
@@ -27,6 +28,12 @@ export default function ScanPage() {
   const [selectedScanType, setSelectedScanType] = useState<'face' | 'hand'>('face');
   const [cameraStream, setCameraStream] = useState<MediaStream | null>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
+  const cameraStreamRef = useRef<MediaStream | null>(null);
+
+  // cameraStreamRef를 동기화
+  useEffect(() => {
+    cameraStreamRef.current = cameraStream;
+  }, [cameraStream]);
 
   const handleScan = async () => {
     setIsScanning(true);
@@ -44,34 +51,55 @@ export default function ScanPage() {
     }
 
     // 실제 카메라 스트림 시작
+    let newStream: MediaStream | null = null;
     try {
       if (typeof window !== 'undefined' && navigator.mediaDevices) {
-        const stream = await navigator.mediaDevices.getUserMedia({
+        newStream = await navigator.mediaDevices.getUserMedia({
           video: { facingMode: 'user' }
         });
-        setCameraStream(stream);
+        setCameraStream(newStream);
       }
     } catch (e) {
       console.log('Browser camera not available:', e);
     }
 
-    // 스캔 애니메이션 (4초)
+    // 스캔 애니메이션 (4초) - ref를 사용하여 stale closure 방지
     setTimeout(() => {
-      // 카메라 스트림 정리
-      if (cameraStream) {
-        cameraStream.getTracks().forEach(track => track.stop());
+      // 카메라 스트림 정리 (ref 사용)
+      const currentStream = cameraStreamRef.current;
+      if (currentStream) {
+        currentStream.getTracks().forEach(track => track.stop());
         setCameraStream(null);
       }
 
-      const randomFortune = luckyMessages[Math.floor(Math.random() * luckyMessages.length)];
-      const fortuneResult = {
-        id: `fortune_${Date.now()}_${Math.random()}`,
-        date: new Date().toISOString(),
-        message: randomFortune.message,
-        luckyNumber: randomFortune.number,
-        luckyColor: randomFortune.color,
-        scanType: selectedScanType
-      };
+      // 프로필이 있으면 프로필 기반 결과 생성
+      const profile = storage.getProfile();
+      let fortuneResult;
+
+      if (profile) {
+        const dailyFortune = getTodayFortune(profile.mbti, profile.element);
+        fortuneResult = {
+          id: `fortune_${Date.now()}_${Math.random()}`,
+          date: new Date().toISOString(),
+          message: dailyFortune.fortuneMessage,
+          luckyNumber: dailyFortune.luckyNumber,
+          luckyColor: dailyFortune.luckyColor.hex,
+          luckyColorName: dailyFortune.luckyColor.name,
+          characterEmoji: dailyFortune.character.emoji,
+          characterName: dailyFortune.character.name,
+          scanType: selectedScanType
+        };
+      } else {
+        const randomFortune = luckyMessages[Math.floor(Math.random() * luckyMessages.length)];
+        fortuneResult = {
+          id: `fortune_${Date.now()}_${Math.random()}`,
+          date: new Date().toISOString(),
+          message: randomFortune.message,
+          luckyNumber: randomFortune.number,
+          luckyColor: randomFortune.color,
+          scanType: selectedScanType
+        };
+      }
 
       setFortune(fortuneResult);
       storage.add({ type: 'fortune', data: fortuneResult });

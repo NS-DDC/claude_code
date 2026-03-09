@@ -50,6 +50,10 @@ export interface FortuneResult {
   message: string;
   luckyNumber: number;
   luckyColor: string;
+  luckyColorName?: string;
+  characterEmoji?: string;
+  characterName?: string;
+  scanType?: 'face' | 'hand';
 }
 
 // Destiny Character System Types
@@ -104,7 +108,25 @@ export interface DailyFortuneResult {
   avoidAction: string;
   compatibleCharacter: DestinyCharacter;
   luckyNumber: number;
-  luckyColor: string;
+  luckyColor: LuckyColor;
+}
+
+// User Profile (centralized user data)
+export interface UserProfile {
+  mbti: MBTIType;
+  element: Element;
+  birthInfo: SajuInput;
+  characterId: string;
+  characterName: string;
+  characterEmoji: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// Lucky Color structure
+export interface LuckyColor {
+  hex: string;
+  name: string;
 }
 
 export type HistoryItem = SajuResult | SajuCompatibility | MBTICompatibility | FortuneResult | DestinyResult | DestinyCompatibilityResult | DailyFortuneResult;

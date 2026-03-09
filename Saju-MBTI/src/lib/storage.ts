@@ -1,6 +1,7 @@
-import { HistoryRecord } from '@/types';
+import { HistoryRecord, UserProfile } from '@/types';
 
 const STORAGE_KEY = 'fortune_mbti_history';
+const PROFILE_KEY = 'user_profile';
 
 export const storage = {
   // 모든 히스토리 가져오기
@@ -95,6 +96,54 @@ export const storage = {
       localStorage.setItem('userBirthInfo', JSON.stringify(birthInfo));
     } catch (error) {
       console.error('Failed to save user preferences:', error);
+    }
+  },
+
+  // 프로필 존재 여부 확인
+  hasProfile(): boolean {
+    if (typeof window === 'undefined') return false;
+    return localStorage.getItem(PROFILE_KEY) !== null;
+  },
+
+  // 프로필 가져오기
+  getProfile(): UserProfile | null {
+    if (typeof window === 'undefined') return null;
+
+    try {
+      const data = localStorage.getItem(PROFILE_KEY);
+      return data ? JSON.parse(data) : null;
+    } catch (error) {
+      console.error('Failed to get profile:', error);
+      return null;
+    }
+  },
+
+  // 프로필 저장 (하위호환 유지)
+  saveProfile(profile: UserProfile): void {
+    if (typeof window === 'undefined') return;
+
+    try {
+      localStorage.setItem(PROFILE_KEY, JSON.stringify(profile));
+      // 하위호환: 기존 키에도 저장
+      localStorage.setItem('userMBTI', profile.mbti);
+      localStorage.setItem('userElement', profile.element);
+      localStorage.setItem('userBirthInfo', JSON.stringify(profile.birthInfo));
+    } catch (error) {
+      console.error('Failed to save profile:', error);
+    }
+  },
+
+  // 프로필 삭제
+  deleteProfile(): void {
+    if (typeof window === 'undefined') return;
+
+    try {
+      localStorage.removeItem(PROFILE_KEY);
+      localStorage.removeItem('userMBTI');
+      localStorage.removeItem('userElement');
+      localStorage.removeItem('userBirthInfo');
+    } catch (error) {
+      console.error('Failed to delete profile:', error);
     }
   }
 };
