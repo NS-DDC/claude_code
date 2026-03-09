@@ -5,7 +5,11 @@ const config: CapacitorConfig = {
   appName: 'Saju MBTI',
   webDir: 'out',
   server: {
-    androidScheme: 'https'
+    androidScheme: 'http',
+    cleartext: true
+  },
+  android: {
+    webContentsDebuggingEnabled: true
   },
   plugins: {
     Camera: {
