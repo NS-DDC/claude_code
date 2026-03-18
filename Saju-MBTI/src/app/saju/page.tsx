@@ -1,18 +1,30 @@
 'use client';
 
 import { useState } from 'react';
+import dynamic from 'next/dynamic';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Sparkles, Users, ArrowRight, Calendar, Star } from 'lucide-react';
+import { Sparkles, Users, ArrowRight, Calendar, Star, Share2 } from 'lucide-react';
 import GlassCard from '@/components/GlassCard';
 import AdBanner from '@/components/AdBanner';
-import FloatingOrbs from '@/components/FloatingOrbs';
-import RadarChart from '@/components/RadarChart';
+import LoadingSkeleton from '@/components/LoadingSkeleton';
 import { calculateSaju, calculateSajuCompatibility } from '@/lib/sajuCalculator';
 import { generateCompleteFortune } from '@/lib/fortuneLogic';
 import { getYearlyLuck, analyzeYearElementCompatibility } from '@/lib/yearlyLuck';
-import { storage } from '@/lib/storage';
+import { storageService } from '@/lib/storageService';
+import { useAuth } from '@/contexts/AuthContext';
 import { SajuInput, Element } from '@/types';
 import { Share } from '@capacitor/share';
+
+// Dynamic imports for heavy components
+const FloatingOrbs = dynamic(() => import('@/components/FloatingOrbs'), {
+  loading: () => <LoadingSkeleton type="orbs" />,
+  ssr: false
+});
+
+const RadarChart = dynamic(() => import('@/components/RadarChart'), {
+  loading: () => <LoadingSkeleton type="radar" />,
+  ssr: false
+});
 
 type Mode = 'personal' | 'compatibility';
 
@@ -27,6 +39,7 @@ const elementColors: Record<Element, string> = {
 };
 
 export default function SajuPage() {
+  const { user } = useAuth();
   const [mode, setMode] = useState<Mode>('personal');
   const [showResult, setShowResult] = useState(false);
   const [result, setResult] = useState<any>(null);
@@ -50,7 +63,7 @@ export default function SajuPage() {
     birthHour: 12
   });
 
-  const handleCalculate = () => {
+  const handleCalculate = async () => {
     if (mode === 'personal') {
       const sajuResult = calculateSaju(myInput);
       const fortune = generateCompleteFortune(myInput);
@@ -62,14 +75,14 @@ export default function SajuPage() {
       setCompleteFortune(fortune);
       setYearlyLuck({ ...yearInfo, compatibility: yearCompat });
 
-      storage.add({
+      await storageService.add({
         type: 'saju',
         data: {
           ...sajuResult,
           fortune,
           yearlyLuck: yearInfo
         }
-      });
+      }, user?.uid);
     } else {
       const compatResult = calculateSajuCompatibility(myInput, partnerInput);
 
@@ -83,7 +96,7 @@ export default function SajuPage() {
         partnerFortune
       });
       setCompleteFortune(null);
-      storage.add({ type: 'saju-compatibility', data: compatResult });
+      await storageService.add({ type: 'saju-compatibility', data: compatResult }, user?.uid);
     }
     setShowResult(true);
     setShowCardFront(true);
@@ -769,30 +782,23 @@ export default function SajuPage() {
                       let shareText = '';
 
                       if (mode === 'personal' && completeFortune) {
-                        shareText = `🔮 사주 분석 결과\n\n✨ ${completeFortune.fusionCharacter?.name || '운명의 전사'}\n${completeFortune.fusionCharacter?.emoji || '⭐'}\n\n📝 ${completeFortune.overallSummary}\n\n🎯 주도 오행: ${completeFortune.dominantElement}\n\n🍀 행운 아이템\n🎨 색상: ${completeFortune.luckyItems.color.name}\n🍽️ 음식: ${completeFortune.luckyItems.food}\n📍 장소: ${completeFortune.luckyItems.place}\n🕐 시간: ${completeFortune.luckyItems.time}\n🎲 숫자: ${completeFortune.luckyItems.numbers.join(', ')}\n\n📅 ${new Date().toLocaleDateString('ko-KR')}\n🔮 Saju MBTI - NAMSIK93`;
+                        shareText = `🔮 Fortune & MBTI - 사주 분석 결과\n\n✨ ${completeFortune.fusionCharacter?.name || '운명의 전사'}\n${completeFortune.fusionCharacter?.emoji || '⭐'}\n\n📝 ${completeFortune.overallSummary}\n\n🎯 주도 오행: ${completeFortune.dominantElement}\n\n🍀 행운 아이템\n🎨 색상: ${completeFortune.luckyItems.color.name}\n🍽️ 음식: ${completeFortune.luckyItems.food}\n📍 장소: ${completeFortune.luckyItems.place}\n🕐 시간: ${completeFortune.luckyItems.time}\n🎲 숫자: ${completeFortune.luckyItems.numbers.join(', ')}\n\n당신도 운세를 확인해보세요! ✨\n📅 ${new Date().toLocaleDateString('ko-KR')}`;
                       } else if (mode === 'compatibility' && result) {
-                        shareText = `💕 사주 궁합 결과\n\n⭐ 궁합 점수: ${result.compatibilityScore}점\n\n${result.description}\n\n📅 ${new Date().toLocaleDateString('ko-KR')}\n🔮 Saju MBTI - NAMSIK93`;
+                        shareText = `💕 Fortune & MBTI - 사주 궁합 결과\n\n⭐ 궁합 점수: ${result.compatibilityScore}점\n\n${result.description.slice(0, 100)}...\n\n두 사람의 궁합을 확인해보세요! 💑\n📅 ${new Date().toLocaleDateString('ko-KR')}`;
                       }
 
                       await Share.share({
-                        title: mode === 'personal' ? '사주 분석 결과' : '사주 궁합 결과',
+                        title: mode === 'personal' ? 'Fortune & MBTI - 사주 분석' : 'Fortune & MBTI - 사주 궁합',
                         text: shareText,
                         dialogTitle: '친구에게 공유하기'
                       });
                     } catch (error) {
-                      // Fallback to browser share API
-                      if (navigator.share) {
-                        navigator.share({
-                          title: '사주 분석 결과',
-                          text: '나의 사주 분석 결과를 확인해보세요!',
-                        });
-                      } else {
-                        alert('공유 기능을 사용할 수 없습니다.');
-                      }
+                      console.error('Share failed:', error);
                     }
                   }}
-                  className="flex-1 py-3 bg-royal-gold text-white rounded-lg font-semibold"
+                  className="flex-1 py-3 bg-gradient-to-r from-royal-gold to-yellow-500 text-white rounded-lg font-semibold flex items-center justify-center gap-2 shadow-lg hover:shadow-xl transition-shadow"
                 >
+                  <Share2 className="w-5 h-5" />
                   공유하기
                 </button>
               </div>

@@ -5,7 +5,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Scan, Camera, Sparkles, Hand, User } from 'lucide-react';
 import GlassCard from '@/components/GlassCard';
 import AdBanner from '@/components/AdBanner';
-import { storage } from '@/lib/storage';
+import { storageService } from '@/lib/storageService';
+import { useAuth } from '@/contexts/AuthContext';
 import { Camera as CapCamera } from '@capacitor/camera';
 import { Share } from '@capacitor/share';
 
@@ -20,6 +21,7 @@ const luckyMessages = [
 ];
 
 export default function ScanPage() {
+  const { user } = useAuth();
   const [isScanning, setIsScanning] = useState(false);
   const [showResult, setShowResult] = useState(false);
   const [fortune, setFortune] = useState<any>(null);
@@ -56,7 +58,7 @@ export default function ScanPage() {
     }
 
     // 스캔 애니메이션 (4초)
-    setTimeout(() => {
+    setTimeout(async () => {
       // 카메라 스트림 정리
       if (cameraStream) {
         cameraStream.getTracks().forEach(track => track.stop());
@@ -74,7 +76,7 @@ export default function ScanPage() {
       };
 
       setFortune(fortuneResult);
-      storage.add({ type: 'fortune', data: fortuneResult });
+      await storageService.add({ type: 'fortune', data: fortuneResult }, user?.uid);
       setIsScanning(false);
       setShowResult(true);
     }, 4000);

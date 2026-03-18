@@ -113,3 +113,17 @@ export interface HistoryRecord {
   type: 'saju' | 'saju-compatibility' | 'mbti' | 'fortune' | 'destiny' | 'destiny-compatibility' | 'daily-fortune';
   data: HistoryItem;
 }
+
+export interface UserProfile {
+  displayName: string;
+  photoURL: string;
+  mbtiType: MBTIType | '';
+  gender: 'male' | 'female' | '';
+  birthYear: number | null;
+  birthMonth: number | null;
+  birthDay: number | null;
+  birthHour: number | null;
+  element: Element | '';
+  createdAt: string;
+  updatedAt: string;
+}

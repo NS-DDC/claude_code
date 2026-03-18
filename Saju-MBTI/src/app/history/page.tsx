@@ -5,7 +5,9 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { History, Trash2, Sparkles, Heart, Scan, AlertCircle, Star, Users, Calendar } from 'lucide-react';
 import GlassCard from '@/components/GlassCard';
 import AdBanner from '@/components/AdBanner';
-import { storage } from '@/lib/storage';
+import ProtectedRoute from '@/components/ProtectedRoute';
+import { storageService } from '@/lib/storageService';
+import { useAuth } from '@/contexts/AuthContext';
 import { HistoryRecord } from '@/types';
 
 const typeLabels = {
@@ -39,34 +41,64 @@ const typeColors = {
 };
 
 export default function HistoryPage() {
+  const { user } = useAuth();
   const [history, setHistory] = useState<HistoryRecord[]>([]);
   const [selectedType, setSelectedType] = useState<string>('all');
   const [selectedItem, setSelectedItem] = useState<HistoryRecord | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     loadHistory();
-  }, []);
+  }, [user]);
 
-  const loadHistory = () => {
-    const allHistory = storage.getAll();
-    setHistory(allHistory);
+  const loadHistory = async () => {
+    if (!user?.uid) {
+      setHistory([]);
+      setIsLoading(false);
+      return;
+    }
+
+    try {
+      setIsLoading(true);
+      const allHistory = await storageService.getAll(user.uid);
+      setHistory(allHistory);
+    } catch (error) {
+      console.error('Failed to load history:', error);
+      setHistory([]);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  const handleDelete = (id: string) => {
+  const handleDelete = async (id: string) => {
+    if (!user?.uid) return;
+
     if (confirm('정말 삭제하시겠습니까?')) {
-      storage.delete(id);
-      loadHistory();
-      if (selectedItem?.data.id === id) {
-        setSelectedItem(null);
+      try {
+        await storageService.delete(id, user.uid);
+        await loadHistory();
+        if (selectedItem?.data.id === id) {
+          setSelectedItem(null);
+        }
+      } catch (error) {
+        console.error('Failed to delete item:', error);
+        alert('삭제에 실패했습니다.');
       }
     }
   };
 
-  const handleClearAll = () => {
+  const handleClearAll = async () => {
+    if (!user?.uid) return;
+
     if (confirm('모든 히스토리를 삭제하시겠습니까?')) {
-      storage.clear();
-      loadHistory();
-      setSelectedItem(null);
+      try {
+        await storageService.clear(user.uid);
+        await loadHistory();
+        setSelectedItem(null);
+      } catch (error) {
+        console.error('Failed to clear history:', error);
+        alert('삭제에 실패했습니다.');
+      }
     }
   };
 
@@ -80,7 +112,8 @@ export default function HistoryPage() {
   };
 
   return (
-    <div className="container mx-auto px-4 py-8 max-w-lg">
+    <ProtectedRoute>
+      <div className="container mx-auto px-4 py-8 max-w-lg">
       <motion.div
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -132,7 +165,14 @@ export default function HistoryPage() {
         )}
       </GlassCard>
 
-      {filteredHistory.length === 0 ? (
+      {isLoading ? (
+        <GlassCard>
+          <div className="text-center py-12">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-royal-gold mx-auto mb-4"></div>
+            <p className="text-pastel-brown text-lg">히스토리를 불러오는 중...</p>
+          </div>
+        </GlassCard>
+      ) : filteredHistory.length === 0 ? (
         <GlassCard>
           <div className="text-center py-12">
             <AlertCircle className="w-16 h-16 text-pastel-brown/50 mx-auto mb-4" />
@@ -375,6 +415,7 @@ export default function HistoryPage() {
       </AnimatePresence>
 
       <AdBanner />
-    </div>
+      </div>
+    </ProtectedRoute>
   );
 }

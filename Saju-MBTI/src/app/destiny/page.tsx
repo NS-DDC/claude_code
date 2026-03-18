@@ -1,18 +1,38 @@
 'use client';
 
 import { useState } from 'react';
+import dynamic from 'next/dynamic';
 import { motion } from 'framer-motion';
 import { Star, Users, Calendar, Share2, Save } from 'lucide-react';
 import GlassCard from '@/components/GlassCard';
-import FloatingOrbs from '@/components/FloatingOrbs';
-import DestinyCharacterCard from '@/components/DestinyCharacterCard';
-import TalismanCard from '@/components/TalismanCard';
-import DestinyCompatibilityDisplay from '@/components/DestinyCompatibilityDisplay';
+import LoadingSkeleton from '@/components/LoadingSkeleton';
+
+// Dynamic imports for heavy components (loaded only when results are shown)
+const FloatingOrbs = dynamic(() => import('@/components/FloatingOrbs'), {
+  loading: () => <LoadingSkeleton type="orbs" />,
+  ssr: false
+});
+
+const DestinyCharacterCard = dynamic(() => import('@/components/DestinyCharacterCard'), {
+  loading: () => <LoadingSkeleton type="card" />,
+  ssr: false
+});
+
+const TalismanCard = dynamic(() => import('@/components/TalismanCard'), {
+  loading: () => <LoadingSkeleton type="card" />,
+  ssr: false
+});
+
+const DestinyCompatibilityDisplay = dynamic(() => import('@/components/DestinyCompatibilityDisplay'), {
+  loading: () => <LoadingSkeleton type="card" />,
+  ssr: false
+});
 import { getDestinyCharacter } from '@/lib/destinyCharacter';
 import { calculateSaju } from '@/lib/sajuCalculator';
 import { calculateDestinyCompatibility } from '@/lib/destinyCompatibility';
 import { getDestinyYearAdvice, getYearlyLuck } from '@/lib/yearlyLuck';
-import { storage } from '@/lib/storage';
+import { storageService } from '@/lib/storageService';
+import { useAuth } from '@/contexts/AuthContext';
 import { MBTIType, SajuInput, DestinyCharacter, DestinyCompatibilityResult } from '@/types';
 import { Share } from '@capacitor/share';
 
@@ -26,6 +46,7 @@ const mbtiTypes: MBTIType[] = [
 ];
 
 export default function DestinyPage() {
+  const { user } = useAuth();
   const [mode, setMode] = useState<Mode>('character');
   const [showResult, setShowResult] = useState(false);
   const [character, setCharacter] = useState<DestinyCharacter | null>(null);
@@ -50,7 +71,7 @@ export default function DestinyPage() {
     birthHour: 14
   });
 
-  const handleDiscover = () => {
+  const handleDiscover = async () => {
     if (mode === 'character') {
       // Calculate element from birth info
       const sajuResult = calculateSaju(myBirth);
@@ -66,12 +87,11 @@ export default function DestinyPage() {
       const advice = getDestinyYearAdvice(currentYear, dominantElement, myMBTI);
       setYearAdvice(advice);
 
-      // Save to localStorage for daily fortune widget
-      localStorage.setItem('userMBTI', myMBTI);
-      localStorage.setItem('userElement', dominantElement);
+      // Save user preferences
+      await storageService.saveUserPreferences(myMBTI, dominantElement, myBirth, user?.uid);
 
       // Save to history
-      storage.add({
+      await storageService.add({
         type: 'destiny',
         data: {
           id: `destiny_${Date.now()}`,
@@ -83,7 +103,7 @@ export default function DestinyPage() {
           yearElement: getYearlyLuck(currentYear).element,
           yearAdvice: advice
         }
-      });
+      }, user?.uid);
     } else {
       // Compatibility mode
       const mySajuResult = calculateSaju(myBirth);
@@ -98,10 +118,10 @@ export default function DestinyPage() {
       setCompatResult(compat);
 
       // Save to history
-      storage.add({
+      await storageService.add({
         type: 'destiny-compatibility',
         data: compat
-      });
+      }, user?.uid);
     }
 
     setShowResult(true);
@@ -116,16 +136,20 @@ export default function DestinyPage() {
   const handleShare = async () => {
     try {
       if (mode === 'character' && character) {
+        const shareText = `✨ Fortune & MBTI - 운명 캐릭터\n\n${character.emoji} ${character.name}\n${character.mbti} × ${character.element}\n\n📝 ${character.description.slice(0, 80)}...\n\n당신의 운명 캐릭터를 발견해보세요! 🌟`;
+
         await Share.share({
-          title: '나의 운명 캐릭터',
-          text: `나는 ${character.name} (${character.mbti}/${character.element})입니다! 당신의 운명 캐릭터는?`,
-          url: window.location.href
+          title: 'Fortune & MBTI - 운명 캐릭터',
+          text: shareText,
+          dialogTitle: '친구에게 공유하기'
         });
       } else if (compatResult) {
+        const shareText = `💕 Fortune & MBTI - 운명 궁합\n\n⭐ 궁합 점수: ${compatResult.totalScore}점\n🎭 ${compatResult.compatibilityType}\n\n${compatResult.description.slice(0, 100)}...\n\n두 사람의 운명 궁합을 확인해보세요! 💑`;
+
         await Share.share({
-          title: '운명 캐릭터 궁합',
-          text: `우리의 궁합은 ${compatResult.totalScore}점, ${compatResult.compatibilityType}입니다!`,
-          url: window.location.href
+          title: 'Fortune & MBTI - 운명 궁합',
+          text: shareText,
+          dialogTitle: '친구에게 공유하기'
         });
       }
     } catch (error) {

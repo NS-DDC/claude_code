@@ -2,12 +2,18 @@
 
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Settings, Bell, Info, TestTube } from 'lucide-react';
+import { Settings, Bell, Info, TestTube, LogOut } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { toast } from 'react-hot-toast';
 import GlassCard from '@/components/GlassCard';
 import AdBanner from '@/components/AdBanner';
+import ProtectedRoute from '@/components/ProtectedRoute';
+import { useAuth } from '@/contexts/AuthContext';
 import { notificationService, NotificationSettings } from '@/lib/notifications';
 
 export default function SettingsPage() {
+  const router = useRouter();
+  const { logout } = useAuth();
   const [settings, setSettings] = useState<NotificationSettings>({
     enabled: false,
     dailyFortune: false,
@@ -15,6 +21,7 @@ export default function SettingsPage() {
     reminders: false
   });
   const [pendingCount, setPendingCount] = useState(0);
+  const [loggingOut, setLoggingOut] = useState(false);
 
   useEffect(() => {
     loadSettings();
@@ -93,8 +100,26 @@ export default function SettingsPage() {
     alert('1초 후 테스트 알림이 전송됩니다!');
   };
 
+  const handleLogout = async () => {
+    setLoggingOut(true);
+    try {
+      await logout();
+      toast.success('로그아웃되었습니다', {
+        icon: '👋',
+        duration: 2000,
+      });
+      router.push('/');
+    } catch (error: any) {
+      console.error('Logout error:', error);
+      toast.error(error.message || '로그아웃에 실패했습니다');
+    } finally {
+      setLoggingOut(false);
+    }
+  };
+
   return (
-    <div className="container mx-auto px-4 py-8 max-w-lg">
+    <ProtectedRoute>
+      <div className="container mx-auto px-4 py-8 max-w-lg">
       <motion.div
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -235,7 +260,45 @@ export default function SettingsPage() {
         </ul>
       </GlassCard>
 
+      <GlassCard className="mb-4">
+        <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
+          <LogOut className="w-5 h-5 text-royal-gold" />
+          계정
+        </h3>
+        <motion.button
+          onClick={handleLogout}
+          disabled={loggingOut}
+          whileHover={{ scale: loggingOut ? 1 : 1.02 }}
+          whileTap={{ scale: loggingOut ? 1 : 0.98 }}
+          className="w-full bg-gradient-to-r from-royal-gold to-amber-500 text-white
+                   py-3 px-6 rounded-xl font-semibold
+                   hover:from-amber-500 hover:to-royal-gold
+                   disabled:opacity-50 disabled:cursor-not-allowed
+                   transition-all duration-200
+                   flex items-center justify-center gap-2
+                   shadow-lg hover:shadow-xl"
+        >
+          {loggingOut ? (
+            <>
+              <motion.div
+                animate={{ rotate: 360 }}
+                transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
+              >
+                <LogOut className="w-5 h-5" />
+              </motion.div>
+              <span>로그아웃 중...</span>
+            </>
+          ) : (
+            <>
+              <LogOut className="w-5 h-5" />
+              <span>로그아웃</span>
+            </>
+          )}
+        </motion.button>
+      </GlassCard>
+
       <AdBanner />
-    </div>
+      </div>
+    </ProtectedRoute>
   );
 }

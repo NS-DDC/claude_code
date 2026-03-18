@@ -2,7 +2,7 @@
 
 import { usePathname } from 'next/navigation';
 import Link from 'next/link';
-import { Home, Sparkles, Heart, Star, Settings } from 'lucide-react';
+import { Home, Sparkles, Heart, Star, Settings, User } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 const navItems = [
@@ -11,6 +11,7 @@ const navItems = [
   { name: 'MBTI', path: '/mbti', icon: Heart },
   { name: '운명', path: '/destiny', icon: Star },
   { name: '설정', path: '/settings', icon: Settings },
+  { name: '프로필', path: '/profile', icon: User },
 ];
 
 export default function BottomNav() {

@@ -3,7 +3,8 @@
 import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import Link from 'next/link';
-import { Sparkles, ArrowRight, Calendar } from 'lucide-react';
+import { Sparkles, ArrowRight, Calendar, Share2 } from 'lucide-react';
+import { Share } from '@capacitor/share';
 import { getTodayFortune } from '@/lib/dailyFortune';
 import { MBTIType, Element, DailyFortuneResult } from '@/types';
 
@@ -37,6 +38,31 @@ export default function DailyFortuneWidget() {
       console.error('Failed to load daily fortune:', error);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleShare = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    if (!fortune) return;
+
+    try {
+      const today = new Date().toLocaleDateString('ko-KR', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric'
+      });
+
+      const shareText = `✨ Fortune & MBTI - 오늘의 운세\n\n${today}\n${fortune.character.emoji} ${fortune.character.name}\n\n📝 ${fortune.fortuneMessage}\n\n🍀 행운의 시간: ${fortune.luckyTime}\n🎲 행운의 숫자: ${fortune.luckyNumber}\n\n당신의 오늘 운세를 확인해보세요! 🌟`;
+
+      await Share.share({
+        title: 'Fortune & MBTI - 오늘의 운세',
+        text: shareText,
+        dialogTitle: '친구에게 공유하기'
+      });
+    } catch (error) {
+      console.error('Share failed:', error);
     }
   };
 
@@ -110,10 +136,21 @@ export default function DailyFortuneWidget() {
               </div>
             </div>
 
-            {/* Call to Action */}
-            <div className="flex items-center justify-between text-sm">
-              <span className="opacity-90">자세히 보기</span>
-              <ArrowRight className="w-5 h-5" />
+            {/* Action Buttons */}
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex items-center gap-2 text-sm opacity-90">
+                <span>자세히 보기</span>
+                <ArrowRight className="w-4 h-4" />
+              </div>
+              <motion.button
+                whileHover={{ scale: 1.1 }}
+                whileTap={{ scale: 0.9 }}
+                onClick={handleShare}
+                className="bg-white/30 hover:bg-white/40 backdrop-blur-sm rounded-full p-2 transition-colors"
+                aria-label="공유하기"
+              >
+                <Share2 className="w-5 h-5" />
+              </motion.button>
             </div>
           </div>
         </motion.div>

@@ -2,24 +2,26 @@
 
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Heart, ArrowRight } from 'lucide-react';
+import { Heart, ArrowRight, Share2 } from 'lucide-react';
 import GlassCard from '@/components/GlassCard';
 import AdBanner from '@/components/AdBanner';
 import { calculateMBTICompatibility, mbtiTypes } from '@/lib/mbtiCompatibility';
-import { storage } from '@/lib/storage';
+import { storageService } from '@/lib/storageService';
+import { useAuth } from '@/contexts/AuthContext';
 import { MBTIType } from '@/types';
 import { Share } from '@capacitor/share';
 
 export default function MBTIPage() {
+  const { user } = useAuth();
   const [myMBTI, setMyMBTI] = useState<MBTIType>('INFP');
   const [partnerMBTI, setPartnerMBTI] = useState<MBTIType>('ENFJ');
   const [showResult, setShowResult] = useState(false);
   const [result, setResult] = useState<any>(null);
 
-  const handleCalculate = () => {
+  const handleCalculate = async () => {
     const compatResult = calculateMBTICompatibility(myMBTI, partnerMBTI);
     setResult(compatResult);
-    storage.add({ type: 'mbti', data: compatResult });
+    await storageService.add({ type: 'mbti', data: compatResult }, user?.uid);
     setShowResult(true);
   };
 
@@ -220,27 +222,20 @@ export default function MBTIPage() {
                       else if (result.score >= 40) compatType = '보통 궁합';
                       else compatType = '노력이 필요한 궁합';
 
-                      const shareText = `💕 MBTI 궁합 분석\n\n${myMBTI} ❤️ ${partnerMBTI}\n\n⭐ 궁합 점수: ${result.score}점 ${stars}\n🎭 ${compatType}\n\n📝 ${result.description}\n\n📅 ${new Date().toLocaleDateString('ko-KR')}\n🔮 Saju MBTI - NAMSIK93`;
+                      const shareText = `💕 Fortune & MBTI - MBTI 궁합 분석\n\n${myMBTI} ❤️ ${partnerMBTI}\n\n⭐ 궁합 점수: ${result.score}점 ${stars}\n🎭 ${compatType}\n\n📝 ${result.description.slice(0, 100)}...\n\n당신도 MBTI 궁합을 확인해보세요! 💕\n📅 ${new Date().toLocaleDateString('ko-KR')}`;
 
                       await Share.share({
-                        title: 'MBTI 궁합 결과',
+                        title: 'Fortune & MBTI - MBTI 궁합',
                         text: shareText,
                         dialogTitle: '친구에게 공유하기'
                       });
                     } catch (error) {
-                      // Fallback to browser share API
-                      if (navigator.share) {
-                        navigator.share({
-                          title: 'MBTI 궁합 결과',
-                          text: `${myMBTI} ❤️ ${partnerMBTI} 궁합: ${result.score}점!`,
-                        });
-                      } else {
-                        alert('공유 기능을 사용할 수 없습니다.');
-                      }
+                      console.error('Share failed:', error);
                     }
                   }}
-                  className="py-3 bg-gradient-to-r from-royal-gold to-yellow-500 text-white rounded-lg font-semibold"
+                  className="py-3 bg-gradient-to-r from-royal-gold to-yellow-500 text-white rounded-lg font-semibold flex items-center justify-center gap-2 shadow-lg hover:shadow-xl transition-shadow"
                 >
+                  <Share2 className="w-5 h-5" />
                   공유하기
                 </motion.button>
               </div>

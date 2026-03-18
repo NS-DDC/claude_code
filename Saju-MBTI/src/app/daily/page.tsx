@@ -1,14 +1,22 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import dynamic from 'next/dynamic';
 import { motion } from 'framer-motion';
 import { Calendar, Clock, Sparkles, ThumbsUp, ThumbsDown, Heart, ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
 import GlassCard from '@/components/GlassCard';
-import FloatingOrbs from '@/components/FloatingOrbs';
+import LoadingSkeleton from '@/components/LoadingSkeleton';
 import { getTodayFortune } from '@/lib/dailyFortune';
+
+// Dynamic import for FloatingOrbs
+const FloatingOrbs = dynamic(() => import('@/components/FloatingOrbs'), {
+  loading: () => <LoadingSkeleton type="orbs" />,
+  ssr: false
+});
 import { calculateSaju } from '@/lib/sajuCalculator';
-import { storage } from '@/lib/storage';
+import { storageService } from '@/lib/storageService';
+import { useAuth } from '@/contexts/AuthContext';
 import { MBTIType, SajuInput, DailyFortuneResult, Element } from '@/types';
 
 const mbtiTypes: MBTIType[] = [
@@ -27,6 +35,7 @@ const ELEMENT_COLORS: Record<Element, string> = {
 };
 
 export default function DailyFortunePage() {
+  const { user } = useAuth();
   const [fortune, setFortune] = useState<DailyFortuneResult | null>(null);
   const [showInput, setShowInput] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
@@ -42,23 +51,22 @@ export default function DailyFortunePage() {
 
   useEffect(() => {
     loadFortune();
-  }, []);
+  }, [user]);
 
-  const loadFortune = () => {
+  const loadFortune = async () => {
     try {
-      // Try to load from localStorage
-      const savedMBTI = localStorage.getItem('userMBTI') as MBTIType | null;
-      const savedElement = localStorage.getItem('userElement') as Element | null;
+      // Try to load from storage
+      const prefs = await storageService.getUserPreferences(user?.uid);
 
-      if (savedMBTI && savedElement) {
-        const todayFortune = getTodayFortune(savedMBTI, savedElement);
+      if (prefs?.mbti && prefs?.element) {
+        const todayFortune = getTodayFortune(prefs.mbti as MBTIType, prefs.element as Element);
         setFortune(todayFortune);
 
         // Save to history
-        storage.add({
+        await storageService.add({
           type: 'daily-fortune',
           data: todayFortune
-        });
+        }, user?.uid);
       } else {
         setShowInput(true);
       }
@@ -70,7 +78,7 @@ export default function DailyFortunePage() {
     }
   };
 
-  const handleCalculate = () => {
+  const handleCalculate = async () => {
     // Calculate element from birth
     const sajuResult = calculateSaju(birth);
     const element = (Object.entries(sajuResult.elements) as [Element, number][])
@@ -80,15 +88,14 @@ export default function DailyFortunePage() {
     const todayFortune = getTodayFortune(mbti, element);
     setFortune(todayFortune);
 
-    // Save to localStorage
-    localStorage.setItem('userMBTI', mbti);
-    localStorage.setItem('userElement', element);
+    // Save preferences
+    await storageService.saveUserPreferences(mbti, element, birth, user?.uid);
 
     // Save to history
-    storage.add({
+    await storageService.add({
       type: 'daily-fortune',
       data: todayFortune
-    });
+    }, user?.uid);
 
     setShowInput(false);
   };

@@ -1,6 +1,8 @@
 import type { Metadata } from 'next';
 import './globals.css';
 import BottomNav from '@/components/BottomNav';
+import { ClientAuthProvider } from '@/components/ClientAuthProvider';
+import ErrorBoundary from '@/components/ErrorBoundary';
 
 export const metadata: Metadata = {
   title: 'Fortune & MBTI - 운명과 성격',
@@ -16,9 +18,13 @@ export default function RootLayout({
   return (
     <html lang="ko">
       <body>
-        <main className="min-h-screen pb-16">
-          {children}
-        </main>
+        <ClientAuthProvider>
+          <ErrorBoundary>
+            <main className="min-h-screen pb-16">
+              {children}
+            </main>
+          </ErrorBoundary>
+        </ClientAuthProvider>
         <BottomNav />
       </body>
     </html>
