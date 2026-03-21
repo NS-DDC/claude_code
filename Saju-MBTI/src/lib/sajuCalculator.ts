@@ -165,3 +165,64 @@ function generateCompatibilityDescription(
 
   return `궁합 점수: ${score}점 (${level})\n\n${advice}\n\n본인의 행운 오행은 '${mySaju.luckyElement}', 상대방의 행운 오행은 '${partnerSaju.luckyElement}'입니다.`;
 }
+
+// Fortune category scores based on saju elements
+export function calculateFortuneCategories(elements: Record<string, number>, luckyElement: string): {
+  love: number;
+  career: number;
+  wealth: number;
+  health: number;
+  overall: number;
+} {
+  const total = Object.values(elements).reduce((s, v) => s + v, 0) || 1;
+  const wood = (elements['목'] || 0) / total;
+  const fire = (elements['화'] || 0) / total;
+  const earth = (elements['토'] || 0) / total;
+  const metal = (elements['금'] || 0) / total;
+  const water = (elements['수'] || 0) / total;
+
+  // Each element governs different life areas
+  const love = Math.round(40 + fire * 120 + water * 60 - metal * 40);
+  const career = Math.round(40 + metal * 120 + earth * 60 - wood * 20);
+  const wealth = Math.round(40 + earth * 120 + metal * 60 - wood * 30);
+  const health = Math.round(40 + wood * 120 + water * 60 - fire * 20);
+
+  const clamp = (n: number) => Math.min(95, Math.max(25, n));
+  const scores = { love: clamp(love), career: clamp(career), wealth: clamp(wealth), health: clamp(health) };
+  const overall = Math.round((scores.love + scores.career + scores.wealth + scores.health) / 4);
+  return { ...scores, overall };
+}
+
+// Monthly fortune (월운) - returns next 3 months outlook
+export function getMonthlyFortune(elements: Record<string, number>, year: number, month: number): Array<{
+  month: number;
+  year: number;
+  outlook: string;
+  score: number;
+  highlight: string;
+}> {
+  const results = [];
+  for (let i = 0; i < 3; i++) {
+    let m = month + i;
+    let y = year;
+    if (m > 12) { m -= 12; y += 1; }
+
+    const monthElement = ['목', '화', '토', '금', '수', '목', '화', '토', '금', '수', '목', '화'][m - 1];
+    const myStrong = Object.entries(elements).sort((a, b) => b[1] - a[1])[0]?.[0];
+    const interaction = myStrong === monthElement ? '상생' : '보통';
+
+    const outlooks: Record<string, string[]> = {
+      '상생': ['이 달은 당신의 기운과 잘 맞습니다. 새로운 시도를 해보세요.', '좋은 에너지가 흐르는 달입니다. 인간관계에서 좋은 일이 생깁니다.'],
+      '보통': ['평온한 한 달이 될 것입니다. 꾸준함이 중요합니다.', '안정적인 흐름 속에서 내실을 다지는 시기입니다.'],
+    };
+    const score = interaction === '상생' ? 70 + Math.floor(Math.random() * 25) : 45 + Math.floor(Math.random() * 30);
+    const arr = outlooks[interaction];
+
+    results.push({
+      month: m, year: y, score,
+      outlook: arr[i % arr.length],
+      highlight: interaction === '상생' ? '🌟 좋은 달' : '📌 안정',
+    });
+  }
+  return results;
+}

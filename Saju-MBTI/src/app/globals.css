@@ -12,12 +12,12 @@ html,
 body {
   max-width: 100vw;
   overflow-x: hidden;
-  background: linear-gradient(135deg, #E0F2F1 0%, #B2DFDB 50%, #80CBC4 100%);
+  background: linear-gradient(135deg, #0f0c29 0%, #302b63 50%, #24243e 100%);
   min-height: 100vh;
 }
 
 body {
-  color: #4A4A4A;
+  color: #E8E8FF;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
     'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
     sans-serif;
@@ -32,11 +32,32 @@ a {
 
 @media (prefers-color-scheme: dark) {
   html {
-    color-scheme: light;
+    color-scheme: dark;
   }
 }
 
-/* 사주 오행 색상 */
+/* CSS custom properties */
+:root {
+  --color-bg-primary: #0f0c29;
+  --color-bg-secondary: #302b63;
+  --color-bg-tertiary: #24243e;
+  --color-accent-gold: #FFD700;
+  --color-accent-purple: #9B59B6;
+  --color-text-primary: #E8E8FF;
+  --color-text-muted: #C4A882;
+  --glass-bg: rgba(255, 255, 255, 0.07);
+  --glass-border: rgba(255, 255, 255, 0.15);
+}
+
+/* Glass morphism — mystical dark variant */
+.glass-mystical {
+  background: rgba(255, 255, 255, 0.07);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+/* 사주 오행 색상 — vivid on dark bg */
 .element-목 {
   @apply bg-green-500 text-white;
 }
@@ -46,11 +67,11 @@ a {
 }
 
 .element-토 {
-  @apply bg-yellow-600 text-white;
+  @apply bg-yellow-500 text-white;
 }
 
 .element-금 {
-  @apply bg-gray-300 text-gray-800;
+  @apply bg-slate-400 text-gray-900;
 }
 
 .element-수 {
@@ -71,6 +92,71 @@ a {
   animation: scan 2s ease-in-out infinite;
 }
 
+/* Shimmer animation for special elements */
+@keyframes shimmer {
+  0% {
+    background-position: -200% center;
+  }
+  100% {
+    background-position: 200% center;
+  }
+}
+
+.shimmer {
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255, 215, 0, 0.4) 50%,
+    transparent 100%
+  );
+  background-size: 200% auto;
+  animation: shimmer 2.5s linear infinite;
+}
+
+/* Floating star particle animation */
+@keyframes starFloat {
+  0% {
+    transform: translateY(0px) rotate(0deg);
+    opacity: 0.6;
+  }
+  33% {
+    transform: translateY(-12px) rotate(120deg);
+    opacity: 1;
+  }
+  66% {
+    transform: translateY(-6px) rotate(240deg);
+    opacity: 0.8;
+  }
+  100% {
+    transform: translateY(0px) rotate(360deg);
+    opacity: 0.6;
+  }
+}
+
+.star-float {
+  animation: starFloat 4s ease-in-out infinite;
+}
+
+.star-float:nth-child(2) {
+  animation-delay: 1s;
+  animation-duration: 5s;
+}
+
+.star-float:nth-child(3) {
+  animation-delay: 2s;
+  animation-duration: 3.5s;
+}
+
+.star-float:nth-child(4) {
+  animation-delay: 0.5s;
+  animation-duration: 6s;
+}
+
+.star-float:nth-child(5) {
+  animation-delay: 1.5s;
+  animation-duration: 4.5s;
+}
+
 /* Safe area for mobile */
 .pb-safe {
   padding-bottom: env(safe-area-inset-bottom);
@@ -82,15 +168,15 @@ a {
 }
 
 ::-webkit-scrollbar-track {
-  background: rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.05);
   border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: rgba(161, 136, 127, 0.5);
+  background: rgba(155, 89, 182, 0.5);
   border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(161, 136, 127, 0.7);
+  background: rgba(155, 89, 182, 0.8);
 }

@@ -5,7 +5,7 @@ import { motion } from 'framer-motion';
 import Link from 'next/link';
 import { Sparkles, ArrowRight, Calendar, Share2 } from 'lucide-react';
 import { Share } from '@capacitor/share';
-import { getTodayFortune } from '@/lib/dailyFortune';
+import { getTodayFortune, generateDailyScores, DailyScores } from '@/lib/dailyFortune';
 import { MBTIType, Element, DailyFortuneResult } from '@/types';
 
 const ELEMENT_COLORS: Record<Element, string> = {
@@ -16,8 +16,26 @@ const ELEMENT_COLORS: Record<Element, string> = {
   '수': 'from-blue-400 to-cyan-500'
 };
 
+interface ScorePillProps {
+  icon: string;
+  label: string;
+  score: number;
+  color: string;
+}
+
+function ScorePill({ icon, label, score, color }: ScorePillProps) {
+  return (
+    <div className={`flex items-center gap-1 px-2 py-1 rounded-full ${color} bg-white/20`}>
+      <span className="text-xs">{icon}</span>
+      <span className="text-xs text-white/90 font-medium">{label}</span>
+      <span className="text-xs text-white font-bold">{score}</span>
+    </div>
+  );
+}
+
 export default function DailyFortuneWidget() {
   const [fortune, setFortune] = useState<DailyFortuneResult | null>(null);
+  const [scores, setScores] = useState<DailyScores | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -26,13 +44,15 @@ export default function DailyFortuneWidget() {
 
   const loadDailyFortune = () => {
     try {
-      // Try to load user's MBTI and birth info from localStorage
       const savedMBTI = localStorage.getItem('userMBTI') as MBTIType | null;
       const savedElement = localStorage.getItem('userElement') as Element | null;
 
       if (savedMBTI && savedElement) {
         const todayFortune = getTodayFortune(savedMBTI, savedElement);
+        const todayDateStr = new Date().toISOString().slice(0, 10);
+        const dailyScores = generateDailyScores(todayDateStr, savedElement, savedMBTI);
         setFortune(todayFortune);
+        setScores(dailyScores);
       }
     } catch (error) {
       console.error('Failed to load daily fortune:', error);
@@ -45,7 +65,7 @@ export default function DailyFortuneWidget() {
     e.preventDefault();
     e.stopPropagation();
 
-    if (!fortune) return;
+    if (!fortune || !scores) return;
 
     try {
       const today = new Date().toLocaleDateString('ko-KR', {
@@ -54,7 +74,7 @@ export default function DailyFortuneWidget() {
         day: 'numeric'
       });
 
-      const shareText = `✨ Fortune & MBTI - 오늘의 운세\n\n${today}\n${fortune.character.emoji} ${fortune.character.name}\n\n📝 ${fortune.fortuneMessage}\n\n🍀 행운의 시간: ${fortune.luckyTime}\n🎲 행운의 숫자: ${fortune.luckyNumber}\n\n당신의 오늘 운세를 확인해보세요! 🌟`;
+      const shareText = `✨ Fortune & MBTI - 오늘의 운세\n\n${today}\n${fortune.character.emoji} ${fortune.character.name}\n\n❤️ 애정운 ${scores.love}점  💼 직업운 ${scores.career}점  💰 재물운 ${scores.wealth}점\n\n🍀 행운의 숫자: ${scores.luckyNumber}\n🍽️ 행운의 음식: ${scores.luckyFood}\n\n당신의 오늘 운세를 확인해보세요! 🌟`;
 
       await Share.share({
         title: 'Fortune & MBTI - 오늘의 운세',
@@ -66,17 +86,26 @@ export default function DailyFortuneWidget() {
     }
   };
 
-  // Don't show widget if no user data
-  if (!fortune || isLoading) {
+  if (!fortune || !scores || isLoading) {
     return null;
   }
 
   const gradientClass = ELEMENT_COLORS[fortune.character.element];
   const today = new Date().toLocaleDateString('ko-KR', {
-    year: 'numeric',
     month: 'long',
-    day: 'numeric'
+    day: 'numeric',
+    weekday: 'short'
   });
+
+  // Top 3 scores sorted descending
+  const scoreEntries: Array<{ icon: string; label: string; score: number }> = [
+    { icon: '❤️', label: '애정', score: scores.love },
+    { icon: '💼', label: '직업', score: scores.career },
+    { icon: '💰', label: '재물', score: scores.wealth },
+    { icon: '🌿', label: '건강', score: scores.health },
+    { icon: '📚', label: '학업', score: scores.study },
+  ];
+  const top3 = [...scoreEntries].sort((a, b) => b.score - a.score).slice(0, 3);
 
   return (
     <motion.div
@@ -89,67 +118,73 @@ export default function DailyFortuneWidget() {
         <motion.div
           whileHover={{ scale: 1.02, y: -5 }}
           whileTap={{ scale: 0.98 }}
-          className={`bg-gradient-to-br ${gradientClass} rounded-2xl shadow-xl p-6 text-white cursor-pointer relative overflow-hidden`}
+          animate={{ boxShadow: ['0 4px 24px 0 rgba(168,85,247,0.15)', '0 4px 32px 4px rgba(236,72,153,0.25)', '0 4px 24px 0 rgba(168,85,247,0.15)'] }}
+          transition={{ boxShadow: { duration: 2.5, repeat: Infinity, ease: 'easeInOut' }, scale: { duration: 0.2 } }}
+          className={`bg-gradient-to-br ${gradientClass} rounded-2xl shadow-xl p-5 text-white cursor-pointer relative overflow-hidden`}
         >
           {/* Background pattern */}
-          <div className="absolute inset-0 opacity-10">
+          <div className="absolute inset-0 opacity-10 pointer-events-none">
             <div className="absolute top-0 right-0 w-32 h-32 bg-white rounded-full -translate-y-16 translate-x-16" />
             <div className="absolute bottom-0 left-0 w-24 h-24 bg-white rounded-full translate-y-12 -translate-x-12" />
           </div>
 
-          {/* Content */}
           <div className="relative z-10">
-            {/* Header */}
-            <div className="flex items-center justify-between mb-4">
+            {/* Header row */}
+            <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-2">
-                <Calendar className="w-5 h-5" />
-                <span className="font-semibold text-sm">{today}</span>
+                <Calendar className="w-4 h-4 opacity-80" />
+                <span className="text-xs font-semibold opacity-90">{today}</span>
               </div>
-              <Sparkles className="w-6 h-6" />
-            </div>
-
-            {/* Character */}
-            <div className="flex items-center gap-4 mb-4">
-              <div className="text-5xl">{fortune.character.emoji}</div>
-              <div>
-                <h3 className="font-bold text-lg mb-1">오늘의 운세</h3>
-                <p className="text-sm opacity-90">{fortune.character.name}</p>
+              <div className="flex items-center gap-1.5">
+                <Sparkles className="w-4 h-4" />
+                <span className="text-xs font-semibold">오늘의 운세</span>
               </div>
             </div>
 
-            {/* Fortune Message */}
-            <div className="bg-white/20 backdrop-blur-sm rounded-lg p-4 mb-4">
-              <p className="text-sm leading-relaxed">
-                {fortune.fortuneMessage}
-              </p>
-            </div>
-
-            {/* Quick Info */}
-            <div className="grid grid-cols-2 gap-2 mb-4">
-              <div className="bg-white/20 rounded-lg p-2">
-                <p className="text-xs opacity-80 mb-1">행운의 시간</p>
-                <p className="text-sm font-semibold">{fortune.luckyTime}</p>
+            {/* Character + lucky number */}
+            <div className="flex items-center gap-3 mb-3">
+              <div className="text-4xl">{fortune.character.emoji}</div>
+              <div className="flex-1">
+                <h3 className="font-bold text-base leading-tight">{fortune.character.name}</h3>
+                <p className="text-xs opacity-80 leading-snug mt-0.5 line-clamp-2">
+                  {fortune.fortuneMessage}
+                </p>
               </div>
-              <div className="bg-white/20 rounded-lg p-2">
-                <p className="text-xs opacity-80 mb-1">행운의 숫자</p>
-                <p className="text-sm font-semibold">{fortune.luckyNumber}</p>
+              {/* Lucky number badge */}
+              <div className="flex-shrink-0 w-12 h-12 rounded-full bg-white/25 backdrop-blur-sm flex flex-col items-center justify-center border border-white/30">
+                <span className="text-xs opacity-80 leading-none">행운</span>
+                <span className="text-xl font-black leading-none">{scores.luckyNumber}</span>
               </div>
             </div>
 
-            {/* Action Buttons */}
-            <div className="flex items-center justify-between gap-3">
-              <div className="flex items-center gap-2 text-sm opacity-90">
+            {/* Top 3 score pills */}
+            <div className="flex gap-1.5 mb-3 flex-wrap">
+              {top3.map((s) => (
+                <ScorePill key={s.label} icon={s.icon} label={s.label} score={s.score} color="" />
+              ))}
+            </div>
+
+            {/* Lucky food row */}
+            <div className="flex items-center gap-2 bg-white/15 rounded-lg px-3 py-1.5 mb-3">
+              <span className="text-sm">🍽️</span>
+              <span className="text-xs opacity-80">행운의 음식</span>
+              <span className="text-xs font-bold ml-auto">{scores.luckyFood}</span>
+            </div>
+
+            {/* Footer */}
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-1.5 text-xs opacity-90">
                 <span>자세히 보기</span>
-                <ArrowRight className="w-4 h-4" />
+                <ArrowRight className="w-3.5 h-3.5" />
               </div>
               <motion.button
                 whileHover={{ scale: 1.1 }}
                 whileTap={{ scale: 0.9 }}
                 onClick={handleShare}
-                className="bg-white/30 hover:bg-white/40 backdrop-blur-sm rounded-full p-2 transition-colors"
+                className="bg-white/30 hover:bg-white/40 backdrop-blur-sm rounded-full p-1.5 transition-colors"
                 aria-label="공유하기"
               >
-                <Share2 className="w-5 h-5" />
+                <Share2 className="w-4 h-4" />
               </motion.button>
             </div>
           </div>

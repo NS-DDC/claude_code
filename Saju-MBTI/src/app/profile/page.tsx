@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { updateProfile } from 'firebase/auth';
 import { Camera as CapCamera, CameraResultType, CameraSource } from '@capacitor/camera';
 import { Capacitor } from '@capacitor/core';
 import GlassCard from '@/components/GlassCard';
@@ -171,6 +172,11 @@ export default function ProfilePage() {
         createdAt: profile.createdAt || now,
       };
       await setDoc(docRef, dataToSave);
+
+      // Sync displayName to Firebase Auth profile
+      if (user && profile.displayName !== user.displayName) {
+        await updateProfile(user, { displayName: profile.displayName });
+      }
 
       // Also sync MBTI/element/birthInfo to preferences
       if (profile.mbtiType || profile.element || profile.birthYear) {

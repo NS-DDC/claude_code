@@ -245,3 +245,75 @@ export function getDailyFortune(
 export function getTodayFortune(mbti: MBTIType, element: Element): DailyFortuneResult {
   return getDailyFortune(mbti, element, new Date().toISOString());
 }
+
+export interface DailyScores {
+  love: number;
+  career: number;
+  wealth: number;
+  health: number;
+  study: number;
+  direction: string;
+  luckyColor: string;
+  luckyNumber: number;
+  luckyFood: string;
+  morningAdvice: string;
+  afternoonAdvice: string;
+  eveningAdvice: string;
+  affirmation: string;
+}
+
+/**
+ * Generate deterministic daily scores from date + element + MBTI
+ */
+export function generateDailyScores(date: string, element: Element, mbti: string): DailyScores {
+  const seed = date + element + mbti;
+  const hash = (s: string): number =>
+    s.split('').reduce((a, c, i) => a + c.charCodeAt(0) * (i + 1), 0);
+  const h = hash(seed);
+
+  const scores = {
+    love: 40 + (h % 60),
+    career: 35 + ((h * 7) % 65),
+    wealth: 30 + ((h * 13) % 70),
+    health: 45 + ((h * 3) % 55),
+    study: 40 + ((h * 11) % 60),
+  };
+
+  const directions = ['북쪽', '남쪽', '동쪽', '서쪽', '북동쪽', '남서쪽', '북서쪽', '남동쪽'];
+  const foods = [
+    '파전', '비빔밥', '삼겹살', '김치찌개', '된장찌개', '불고기', '떡볶이',
+    '순두부찌개', '갈비탕', '냉면', '콩나물국밥', '쌈밥', '해물파전', '닭갈비', '잡채'
+  ];
+  const colors = ['빨간색', '파란색', '초록색', '노란색', '보라색', '흰색', '주황색', '분홍색'];
+  const affirmations = [
+    '나는 오늘도 빛나는 존재입니다',
+    '좋은 일이 나를 향해 흘러들어옵니다',
+    '나는 내 꿈에 한 걸음 더 가까워지고 있습니다',
+    '오늘 나에게 일어나는 모든 일은 최선입니다',
+    '나는 사랑받을 자격이 있습니다',
+    '나는 오늘 최선을 다할 것입니다',
+    '나의 가능성은 무한합니다',
+    '나는 매일 성장하고 있습니다',
+  ];
+
+  const morningMap: Record<string, string> = {
+    '목': '창의적인',
+    '화': '활동적인',
+    '토': '안정적인',
+    '금': '집중력 있는',
+    '수': '유연한',
+  };
+  const morningAdj = morningMap[element] ?? '차분한';
+
+  return {
+    ...scores,
+    direction: directions[h % directions.length],
+    luckyColor: colors[h % colors.length],
+    luckyNumber: (h % 9) + 1,
+    luckyFood: foods[h % foods.length],
+    morningAdvice: `오전에는 ${morningAdj} 활동이 좋습니다. 새로운 시작에 에너지를 쏟아보세요`,
+    afternoonAdvice: '오후에는 집중력이 올라가는 시간입니다. 중요한 일은 지금 하세요',
+    eveningAdvice: '저녁에는 소중한 사람과 시간을 보내세요. 인간관계 운이 상승합니다',
+    affirmation: affirmations[h % affirmations.length],
+  };
+}

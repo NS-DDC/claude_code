@@ -7,7 +7,7 @@ import { Sparkles, Users, ArrowRight, Calendar, Star, Share2 } from 'lucide-reac
 import GlassCard from '@/components/GlassCard';
 import AdBanner from '@/components/AdBanner';
 import LoadingSkeleton from '@/components/LoadingSkeleton';
-import { calculateSaju, calculateSajuCompatibility } from '@/lib/sajuCalculator';
+import { calculateSaju, calculateSajuCompatibility, calculateFortuneCategories, getMonthlyFortune } from '@/lib/sajuCalculator';
 import { generateCompleteFortune } from '@/lib/fortuneLogic';
 import { getYearlyLuck, analyzeYearElementCompatibility } from '@/lib/yearlyLuck';
 import { storageService } from '@/lib/storageService';
@@ -553,6 +553,96 @@ export default function SajuPage() {
                       </div>
                     </div>
                   </div>
+
+                  {/* Fortune Category Bars */}
+                  {(() => {
+                    const cats = calculateFortuneCategories(result.elements, result.luckyElement);
+                    const categoryItems: Array<{ key: keyof typeof cats; label: string; emoji: string; color: string }> = [
+                      { key: 'love', label: '연애운', emoji: '💕', color: 'bg-pink-500' },
+                      { key: 'career', label: '직업운', emoji: '💼', color: 'bg-blue-500' },
+                      { key: 'wealth', label: '재물운', emoji: '💰', color: 'bg-yellow-500' },
+                      { key: 'health', label: '건강운', emoji: '🌿', color: 'bg-green-500' },
+                    ];
+                    return (
+                      <GlassCard className="mb-4">
+                        <h3 className="text-lg font-semibold text-gray-800 mb-4">📊 운세 카테고리</h3>
+                        <div className="space-y-3">
+                          {categoryItems.map(({ key, label, emoji, color }, index) => (
+                            <motion.div
+                              key={key}
+                              initial={{ opacity: 0, x: -20 }}
+                              animate={{ opacity: 1, x: 0 }}
+                              transition={{ delay: index * 0.1, duration: 0.5 }}
+                            >
+                              <div className="flex items-center gap-3">
+                                <span className="w-16 text-sm font-semibold text-gray-700 flex items-center gap-1">
+                                  <span>{emoji}</span>
+                                  <span>{label}</span>
+                                </span>
+                                <div className="flex-1 bg-white/50 rounded-full h-7 overflow-hidden">
+                                  <motion.div
+                                    initial={{ width: 0 }}
+                                    animate={{ width: `${cats[key]}%` }}
+                                    transition={{ delay: index * 0.1 + 0.2, duration: 0.8 }}
+                                    className={`h-full ${color} flex items-center justify-end pr-2`}
+                                  >
+                                    <span className="text-white font-bold text-xs">{cats[key]}</span>
+                                  </motion.div>
+                                </div>
+                              </div>
+                            </motion.div>
+                          ))}
+                        </div>
+                        <div className="mt-4 text-center">
+                          <span className="inline-flex items-center gap-2 bg-gradient-to-r from-royal-gold/20 to-amber-500/20 px-4 py-2 rounded-full">
+                            <span className="text-sm text-pastel-brown">종합 운세:</span>
+                            <span className="text-royal-gold font-bold text-lg">{cats.overall}점</span>
+                          </span>
+                        </div>
+                      </GlassCard>
+                    );
+                  })()}
+
+                  {/* Monthly Fortune (월운) */}
+                  {(() => {
+                    const now = new Date();
+                    const months = getMonthlyFortune(result.elements, now.getFullYear(), now.getMonth() + 1);
+                    const monthNames = ['1월', '2월', '3월', '4월', '5월', '6월', '7월', '8월', '9월', '10월', '11월', '12월'];
+                    return (
+                      <GlassCard className="mb-4">
+                        <h3 className="text-lg font-semibold text-gray-800 mb-4">📅 월운 (다음 3개월)</h3>
+                        <div className="flex gap-3">
+                          {months.map((m, index) => (
+                            <motion.div
+                              key={`${m.year}-${m.month}`}
+                              initial={{ opacity: 0, y: 20 }}
+                              animate={{ opacity: 1, y: 0 }}
+                              transition={{ delay: index * 0.15, duration: 0.5 }}
+                              className="flex-1 bg-white/40 rounded-xl p-3 border border-white/30"
+                            >
+                              <div className="text-center mb-2">
+                                <span className="font-bold text-gray-800 text-sm">
+                                  {m.year !== now.getFullYear() && <span className="text-xs text-gray-500 block">{m.year}</span>}
+                                  {monthNames[m.month - 1]}
+                                </span>
+                              </div>
+                              <div className="text-center mb-2">
+                                <span className={`text-xs font-semibold px-2 py-1 rounded-full ${m.score >= 70 ? 'bg-yellow-400/80 text-yellow-900' : 'bg-blue-200/80 text-blue-800'}`}>
+                                  {m.highlight}
+                                </span>
+                              </div>
+                              <div className="text-center mb-2">
+                                <span className={`font-bold text-lg ${m.score >= 70 ? 'text-royal-gold' : 'text-blue-600'}`}>
+                                  {m.score}점
+                                </span>
+                              </div>
+                              <p className="text-xs text-gray-600 leading-relaxed text-center">{m.outlook}</p>
+                            </motion.div>
+                          ))}
+                        </div>
+                      </GlassCard>
+                    );
+                  })()}
                 </>
               )}
 

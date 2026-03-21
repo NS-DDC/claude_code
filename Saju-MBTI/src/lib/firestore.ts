@@ -10,6 +10,7 @@
  */
 
 import {
+  initializeFirestore,
   getFirestore,
   Firestore,
   collection,
@@ -22,7 +23,8 @@ import {
   query,
   where,
   orderBy,
-  enableIndexedDbPersistence,
+  persistentLocalCache,
+  persistentMultipleTabManager,
   Timestamp,
   serverTimestamp,
   QueryDocumentSnapshot,
@@ -43,47 +45,27 @@ export interface UserPreferences {
 }
 
 /**
- * History record with Firestore timestamps
- */
-interface FirestoreHistoryRecord extends HistoryRecord {
-  id: string;
-  createdAt: Timestamp;
-  updatedAt: Timestamp;
-}
-
-/**
  * Initialize Firestore instance with offline persistence
  */
 let firestoreInstance: Firestore | null = null;
 
 /**
  * Get Firestore instance (singleton pattern)
- * Enables offline persistence on first call
+ * Uses persistentLocalCache for offline support (replaces deprecated enableIndexedDbPersistence)
  */
 export function getFirestoreInstance(): Firestore | null {
-  // Return null if Firebase is not configured
-  if (!isConfigured) {
-    return null;
-  }
+  if (!isConfigured) return null;
 
   if (!firestoreInstance) {
-    firestoreInstance = getFirestore(app);
-
-    // Enable offline persistence (only in browser environment)
-    if (typeof window !== 'undefined') {
-      enableIndexedDbPersistence(firestoreInstance)
-        .then(() => {
-          console.log('Firestore offline persistence enabled');
-        })
-        .catch((err) => {
-          if (err.code === 'failed-precondition') {
-            console.warn('Firestore persistence failed: Multiple tabs open');
-          } else if (err.code === 'unimplemented') {
-            console.warn('Firestore persistence not available in this browser');
-          } else {
-            console.error('Firestore persistence error:', err);
-          }
-        });
+    try {
+      firestoreInstance = initializeFirestore(app, {
+        localCache: persistentLocalCache({
+          tabManager: persistentMultipleTabManager(),
+        }),
+      });
+    } catch {
+      // Already initialized — get existing instance
+      firestoreInstance = getFirestore(app);
     }
   }
 
@@ -126,134 +108,109 @@ export class HistoryService {
   /**
    * Convert Firestore document to HistoryRecord
    */
-  private docToHistoryRecord(docSnap: QueryDocumentSnapshot<DocumentData>): FirestoreHistoryRecord {
+  private docToHistoryRecord(docSnap: QueryDocumentSnapshot<DocumentData>): HistoryRecord {
     const data = docSnap.data();
     return {
-      id: docSnap.id,
       type: data.type,
       data: data.data,
-      createdAt: data.createdAt,
-      updatedAt: data.updatedAt,
-    } as FirestoreHistoryRecord;
+    } as HistoryRecord;
   }
 
   /**
-   * Get all history records for a user
-   * @param userId - User ID
-   * @returns Promise resolving to array of history records
+   * Get all history records for a user, ordered by creation date descending
    */
   async getAll(userId: string): Promise<HistoryRecord[]> {
     try {
       const collectionRef = this.getCollectionRef(userId);
       const q = query(collectionRef, orderBy('createdAt', 'desc'));
       const querySnapshot = await getDocs(q);
-
       return querySnapshot.docs.map(doc => this.docToHistoryRecord(doc));
     } catch (error) {
       console.error('Failed to get history records:', error);
-      throw new Error(`Failed to retrieve history for user ${userId}: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      throw new Error(`Failed to retrieve history: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   }
 
   /**
-   * Add a new history record
-   * @param userId - User ID
-   * @param record - History record to add
-   * @returns Promise resolving when record is added
+   * Add a new history record.
+   * Uses data.id as the Firestore document ID so delete/getById work by the same ID.
    */
   async add(userId: string, record: HistoryRecord): Promise<void> {
     try {
-      const collectionRef = this.getCollectionRef(userId);
-      const timestamp = serverTimestamp();
-
-      await addDoc(collectionRef, {
-        ...record,
-        createdAt: timestamp,
-        updatedAt: timestamp,
+      const docId = record.data.id;
+      if (!docId) {
+        // Fallback: addDoc for records missing an ID (shouldn't happen in practice)
+        await addDoc(this.getCollectionRef(userId), {
+          type: record.type,
+          data: record.data,
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp(),
+        });
+        return;
+      }
+      await setDoc(this.getDocRef(userId, docId), {
+        type: record.type,
+        data: record.data,
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
       });
     } catch (error) {
       console.error('Failed to add history record:', error);
-      throw new Error(`Failed to add history record for user ${userId}: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      throw new Error(`Failed to add history record: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   }
 
   /**
-   * Delete a specific history record
-   * @param userId - User ID
-   * @param recordId - Record ID to delete
-   * @returns Promise resolving when record is deleted
+   * Delete a specific history record by its data.id
    */
   async delete(userId: string, recordId: string): Promise<void> {
     try {
-      const docRef = this.getDocRef(userId, recordId);
-      await deleteDoc(docRef);
+      await deleteDoc(this.getDocRef(userId, recordId));
     } catch (error) {
       console.error('Failed to delete history record:', error);
-      throw new Error(`Failed to delete history record ${recordId} for user ${userId}: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      throw new Error(`Failed to delete history record ${recordId}: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   }
 
   /**
    * Clear all history records for a user
-   * @param userId - User ID
-   * @returns Promise resolving when all records are deleted
    */
   async clear(userId: string): Promise<void> {
     try {
       const records = await this.getAll(userId);
-      const deletePromises = records.map(record =>
-        this.delete(userId, record.data.id)
-      );
-
-      await Promise.all(deletePromises);
+      await Promise.all(records.map(record => this.delete(userId, record.data.id)));
     } catch (error) {
       console.error('Failed to clear history:', error);
-      throw new Error(`Failed to clear history for user ${userId}: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      throw new Error(`Failed to clear history: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   }
 
   /**
-   * Get a specific history record by ID
-   * @param userId - User ID
-   * @param recordId - Record ID
-   * @returns Promise resolving to history record or null if not found
+   * Get a specific history record by its data.id
    */
   async getById(userId: string, recordId: string): Promise<HistoryRecord | null> {
     try {
-      const docRef = this.getDocRef(userId, recordId);
-      const docSnap = await getDoc(docRef);
-
-      if (!docSnap.exists()) {
-        return null;
-      }
-
+      const docSnap = await getDoc(this.getDocRef(userId, recordId));
+      if (!docSnap.exists()) return null;
       return this.docToHistoryRecord(docSnap as QueryDocumentSnapshot<DocumentData>);
     } catch (error) {
       console.error('Failed to get history record by ID:', error);
-      throw new Error(`Failed to get history record ${recordId} for user ${userId}: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      throw new Error(`Failed to get history record ${recordId}: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   }
 
   /**
    * Get history records filtered by type
-   * @param userId - User ID
-   * @param type - Record type to filter by
-   * @returns Promise resolving to array of history records
    */
   async getByType(userId: string, type: HistoryRecord['type']): Promise<HistoryRecord[]> {
     try {
       const collectionRef = this.getCollectionRef(userId);
-      const q = query(
-        collectionRef,
-        where('type', '==', type),
-        orderBy('createdAt', 'desc')
-      );
+      const q = query(collectionRef, where('type', '==', type), orderBy('createdAt', 'desc'));
       const querySnapshot = await getDocs(q);
-
       return querySnapshot.docs.map(doc => this.docToHistoryRecord(doc));
     } catch (error) {
       console.error('Failed to get history records by type:', error);
-      throw new Error(`Failed to get history records of type ${type} for user ${userId}: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      throw new Error(`Failed to get history records of type ${type}: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   }
 }
@@ -309,18 +266,14 @@ export class PreferencesService {
     try {
       const docRef = this.getDocRef(userId);
       const existingPrefs = await this.get(userId);
-
-      const timestamp = serverTimestamp();
-      const dataToSave: UserPreferences = {
+      await setDoc(docRef, {
         ...prefs,
-        createdAt: existingPrefs?.createdAt || (timestamp as Timestamp),
-        updatedAt: timestamp as Timestamp,
-      };
-
-      await setDoc(docRef, dataToSave);
+        createdAt: existingPrefs?.createdAt ?? serverTimestamp(),
+        updatedAt: serverTimestamp(),
+      });
     } catch (error) {
       console.error('Failed to save user preferences:', error);
-      throw new Error(`Failed to save preferences for user ${userId}: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      throw new Error(`Failed to save preferences: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   }
 }

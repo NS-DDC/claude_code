@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, FormEvent } from 'react';
+import { useState, useEffect, FormEvent } from 'react';
 import { motion } from 'framer-motion';
 import { Mail, Lock, Eye, EyeOff, UserPlus, Sparkles, Chrome, AlertCircle, CheckCircle2 } from 'lucide-react';
 import Link from 'next/link';
@@ -17,7 +17,7 @@ interface PasswordStrength {
 
 export default function SignupPage() {
   const router = useRouter();
-  const { signup, loginWithGoogle } = useAuth();
+  const { signup, loginWithGoogle, user, loading: authLoading } = useAuth();
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -25,6 +25,13 @@ export default function SignupPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+
+  // Redirect if already authenticated
+  useEffect(() => {
+    if (!authLoading && user) {
+      router.replace('/');
+    }
+  }, [user, authLoading, router]);
 
   // Password strength calculation
   const getPasswordStrength = (pwd: string): PasswordStrength => {

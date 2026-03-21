@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, FormEvent } from 'react';
+import { useState, useEffect, FormEvent } from 'react';
 import { motion } from 'framer-motion';
 import { Mail, Lock, LogIn, Chrome, Sparkles } from 'lucide-react';
 import Link from 'next/link';
@@ -11,11 +11,18 @@ import { useAuth } from '@/contexts/AuthContext';
 
 export default function LoginPage() {
   const router = useRouter();
-  const { login, loginWithGoogle } = useAuth();
+  const { login, loginWithGoogle, user, loading: authLoading } = useAuth();
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
+
+  // Redirect if already authenticated
+  useEffect(() => {
+    if (!authLoading && user) {
+      router.replace('/');
+    }
+  }, [user, authLoading, router]);
 
   // Email validation
   const isValidEmail = (email: string): boolean => {
@@ -153,10 +160,10 @@ export default function LoginPage() {
             {/* Forgot Password Link */}
             <div className="text-right">
               <Link
-                href="#"
+                href="/forgot-password"
                 className="text-sm text-pastel-brown hover:text-royal-gold transition-colors duration-200"
               >
-                Forgot password?
+                비밀번호를 잊으셨나요?
               </Link>
             </div>
 
