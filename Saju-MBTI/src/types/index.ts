@@ -124,6 +124,8 @@ export interface UserProfile {
   birthDay: number | null;
   birthHour: number | null;
   element: Element | '';
+  onboardingCompleted?: boolean;
+  onboardingSkipped?: boolean;
   createdAt: string;
   updatedAt: string;
 }

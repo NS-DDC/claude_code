@@ -1,0 +1,178 @@
+145 INFO: PyInstaller: 6.18.0, contrib hooks: 2026.0
+145 INFO: Python: 3.13.12
+160 INFO: Platform: Windows-11-10.0.26200-SP0
+160 INFO: Python environment: C:\Program Files\WindowsApps\PythonSoftwareFoundation.Python.3.13_3.13.3312.0_x64__qbz5n2kfra8p0
+165 INFO: Module search paths (PYTHONPATH):
+['E:\\app_dir\\claude_code\\.claude\\worktrees\\focused-feynman',
+ 'C:\\Program '
+ 'Files\\WindowsApps\\PythonSoftwareFoundation.Python.3.13_3.13.3312.0_x64__qbz5n2kfra8p0\\python313.zip',
+ 'C:\\Program '
+ 'Files\\WindowsApps\\PythonSoftwareFoundation.Python.3.13_3.13.3312.0_x64__qbz5n2kfra8p0\\DLLs',
+ 'C:\\Program '
+ 'Files\\WindowsApps\\PythonSoftwareFoundation.Python.3.13_3.13.3312.0_x64__qbz5n2kfra8p0\\Lib',
+ 'C:\\Program '
+ 'Files\\WindowsApps\\PythonSoftwareFoundation.Python.3.13_3.13.3312.0_x64__qbz5n2kfra8p0',
+ 'C:\\Users\\skatl\\AppData\\Local\\Packages\\PythonSoftwareFoundation.Python.3.13_qbz5n2kfra8p0\\LocalCache\\local-packages\\Python313\\site-packages',
+ 'C:\\Program '
+ 'Files\\WindowsApps\\PythonSoftwareFoundation.Python.3.13_3.13.3312.0_x64__qbz5n2kfra8p0\\Lib\\site-packages',
+ 'E:\\app_dir\\claude_code\\DL-Tool']
+567 INFO: Appending 'datas' from .spec
+568 INFO: checking Analysis
+700 INFO: Building because E:\app_dir\claude_code\DL-Tool\ui\main_window.py changed
+700 INFO: Looking for Python shared library...
+700 INFO: Using Python shared library: C:\Program Files\WindowsApps\PythonSoftwareFoundation.Python.3.13_3.13.3312.0_x64__qbz5n2kfra8p0\python313.dll
+700 INFO: Running Analysis Analysis-00.toc
+700 INFO: Target bytecode optimization level: 0
+700 INFO: Initializing module dependency graph...
+702 INFO: Initializing module graph hook caches...
+714 INFO: Analyzing modules for base_library.zip ...
+2014 INFO: Processing standard module hook 'hook-encodings.py' from 'C:\\Users\\skatl\\AppData\\Local\\Packages\\PythonSoftwareFoundation.Python.3.13_qbz5n2kfra8p0\\LocalCache\\local-packages\\Python313\\site-packages\\PyInstaller\\hooks'
+3597 INFO: Processing standard module hook 'hook-pickle.py' from 'C:\\Users\\skatl\\AppData\\Local\\Packages\\PythonSoftwareFoundation.Python.3.13_qbz5n2kfra8p0\\LocalCache\\local-packages\\Python313\\site-packages\\PyInstaller\\hooks'
+4480 INFO: Processing standard module hook 'hook-heapq.py' from 'C:\\Users\\skatl\\AppData\\Local\\Packages\\PythonSoftwareFoundation.Python.3.13_qbz5n2kfra8p0\\LocalCache\\local-packages\\Python313\\site-packages\\PyInstaller\\hooks'
+4852 INFO: Caching module dependency graph...
+4884 INFO: Analyzing E:\app_dir\claude_code\DL-Tool\main.py
+4890 INFO: Processing standard module hook 'hook-PySide6.py' from 'C:\\Users\\skatl\\AppData\\Local\\Packages\\PythonSoftwareFoundation.Python.3.13_qbz5n2kfra8p0\\LocalCache\\local-packages\\Python313\\site-packages\\PyInstaller\\hooks'
+5093 INFO: Processing standard module hook 'hook-shiboken6.py' from 'C:\\Users\\skatl\\AppData\\Local\\Packages\\PythonSoftwareFoundation.Python.3.13_qbz5n2kfra8p0\\LocalCache\\local-packages\\Python313\\site-packages\\PyInstaller\\hooks'
+5255 INFO: Processing standard module hook 'hook-PySide6.QtNetwork.py' from 'C:\\Users\\skatl\\AppData\\Local\\Packages\\PythonSoftwareFoundation.Python.3.13_qbz5n2kfra8p0\\LocalCache\\local-packages\\Python313\\site-packages\\PyInstaller\\hooks'
+7199 INFO: Processing standard module hook 'hook-PySide6.QtCore.py' from 'C:\\Users\\skatl\\AppData\\Local\\Packages\\PythonSoftwareFoundation.Python.3.13_qbz5n2kfra8p0\\LocalCache\\local-packages\\Python313\\site-packages\\PyInstaller\\hooks'
+10512 INFO: Processing standard module hook 'hook-PySide6.QtWidgets.py' from 'C:\\Users\\skatl\\AppData\\Local\\Packages\\PythonSoftwareFoundation.Python.3.13_qbz5n2kfra8p0\\LocalCache\\local-packages\\Python313\\site-packages\\PyInstaller\\hooks'
+13681 INFO: Processing standard module hook 'hook-PySide6.QtGui.py' from 'C:\\Users\\skatl\\AppData\\Local\\Packages\\PythonSoftwareFoundation.Python.3.13_qbz5n2kfra8p0\\LocalCache\\local-packages\\Python313\\site-packages\\PyInstaller\\hooks'
+41144 INFO: Processing standard module hook 'hook-numpy.py' from 'C:\\Users\\skatl\\AppData\\Local\\Packages\\PythonSoftwareFoundation.Python.3.13_qbz5n2kfra8p0\\LocalCache\\local-packages\\Python313\\site-packages\\PyInstaller\\hooks'
+41644 INFO: Processing standard module hook 'hook-difflib.py' from 'C:\\Users\\skatl\\AppData\\Local\\Packages\\PythonSoftwareFoundation.Python.3.13_qbz5n2kfra8p0\\LocalCache\\local-packages\\Python313\\site-packages\\PyInstaller\\hooks'
+41845 INFO: Processing standard module hook 'hook-multiprocessing.util.py' from 'C:\\Users\\skatl\\AppData\\Local\\Packages\\PythonSoftwareFoundation.Python.3.13_qbz5n2kfra8p0\\LocalCache\\local-packages\\Python313\\site-packages\\PyInstaller\\hooks'
+42026 INFO: Processing standard module hook 'hook-xml.py' from 'C:\\Users\\skatl\\AppData\\Local\\Packages\\PythonSoftwareFoundation.Python.3.13_qbz5n2kfra8p0\\LocalCache\\local-packages\\Python313\\site-packages\\PyInstaller\\hooks'
+42288 INFO: Processing standard module hook 'hook-sysconfig.py' from 'C:\\Users\\skatl\\AppData\\Local\\Packages\\PythonSoftwareFoundation.Python.3.13_qbz5n2kfra8p0\\LocalCache\\local-packages\\Python313\\site-packages\\PyInstaller\\hooks'
+42293 INFO: Processing standard module hook 'hook-_ctypes.py' from 'C:\\Users\\skatl\\AppData\\Local\\Packages\\PythonSoftwareFoundation.Python.3.13_qbz5n2kfra8p0\\LocalCache\\local-packages\\Python313\\site-packages\\PyInstaller\\hooks'
+43161 INFO: Processing standard module hook 'hook-platform.py' from 'C:\\Users\\skatl\\AppData\\Local\\Packages\\PythonSoftwareFoundation.Python.3.13_qbz5n2kfra8p0\\LocalCache\\local-packages\\Python313\\site-packages\\PyInstaller\\hooks'
+43676 INFO: Processing standard module hook 'hook-psutil.py' from 'C:\\Users\\skatl\\AppData\\Local\\Packages\\PythonSoftwareFoundation.Python.3.13_qbz5n2kfra8p0\\LocalCache\\local-packages\\Python313\\site-packages\\_pyinstaller_hooks_contrib\\stdhooks'
+44526 INFO: Processing pre-safe-import-module hook 'hook-typing_extensions.py' from 'C:\\Users\\skatl\\AppData\\Local\\Packages\\PythonSoftwareFoundation.Python.3.13_qbz5n2kfra8p0\\LocalCache\\local-packages\\Python313\\site-packages\\PyInstaller\\hooks\\pre_safe_import_module'
+44527 INFO: SetuptoolsInfo: initializing cached setuptools info...
+45699 INFO: Processing standard module hook 'hook-charset_normalizer.py' from 'C:\\Users\\skatl\\AppData\\Local\\Packages\\PythonSoftwareFoundation.Python.3.13_qbz5n2kfra8p0\\LocalCache\\local-packages\\Python313\\site-packages\\_pyinstaller_hooks_contrib\\stdhooks'
+45957 INFO: Processing standard module hook 'hook-ultralytics.py' from 'C:\\Users\\skatl\\AppData\\Local\\Packages\\PythonSoftwareFoundation.Python.3.13_qbz5n2kfra8p0\\LocalCache\\local-packages\\Python313\\site-packages\\_pyinstaller_hooks_contrib\\stdhooks'
+46208 INFO: Processing standard module hook 'hook-cv2.py' from 'C:\\Users\\skatl\\AppData\\Local\\Packages\\PythonSoftwareFoundation.Python.3.13_qbz5n2kfra8p0\\LocalCache\\local-packages\\Python313\\site-packages\\_pyinstaller_hooks_contrib\\stdhooks'
+46734 INFO: Processing standard module hook 'hook-torch.py' from 'C:\\Users\\skatl\\AppData\\Local\\Packages\\PythonSoftwareFoundation.Python.3.13_qbz5n2kfra8p0\\LocalCache\\local-packages\\Python313\\site-packages\\_pyinstaller_hooks_contrib\\stdhooks'
+1531 WARNING: Failed to collect submodules for 'torch.utils.tensorboard' because importing 'torch.utils.tensorboard' raised: ModuleNotFoundError: No module named 'tensorboard'
+W0220 10:16:03.451000 29924 torch\distributed\elastic\multiprocessing\redirects.py:29] NOTE: Redirects are currently not supported in Windows or MacOs.
+C:\Users\skatl\AppData\Local\Packages\PythonSoftwareFoundation.Python.3.13_qbz5n2kfra8p0\LocalCache\local-packages\Python313\site-packages\PyInstaller\utils\hooks\__init__.py:665: DeprecationWarning: `torch.distributed._sharding_spec` will be deprecated, use `torch.distributed._shard.sharding_spec` instead
+  __import__(name)
+C:\Users\skatl\AppData\Local\Packages\PythonSoftwareFoundation.Python.3.13_qbz5n2kfra8p0\LocalCache\local-packages\Python313\site-packages\PyInstaller\utils\hooks\__init__.py:665: DeprecationWarning: `torch.distributed._sharded_tensor` will be deprecated, use `torch.distributed._shard.sharded_tensor` instead
+  __import__(name)
+C:\Users\skatl\AppData\Local\Packages\PythonSoftwareFoundation.Python.3.13_qbz5n2kfra8p0\LocalCache\local-packages\Python313\site-packages\PyInstaller\utils\hooks\__init__.py:665: DeprecationWarning: `torch.distributed._shard.checkpoint` will be deprecated, use `torch.distributed.checkpoint` instead
+  __import__(name)
+57860 INFO: hook-torch: this torch build does not depend on MKL...
+59304 INFO: Processing standard module hook 'hook-matplotlib.py' from 'C:\\Users\\skatl\\AppData\\Local\\Packages\\PythonSoftwareFoundation.Python.3.13_qbz5n2kfra8p0\\LocalCache\\local-packages\\Python313\\site-packages\\PyInstaller\\hooks'
+59627 INFO: Processing pre-safe-import-module hook 'hook-packaging.py' from 'C:\\Users\\skatl\\AppData\\Local\\Packages\\PythonSoftwareFoundation.Python.3.13_qbz5n2kfra8p0\\LocalCache\\local-packages\\Python313\\site-packages\\PyInstaller\\hooks\\pre_safe_import_module'
+59723 INFO: Processing pre-safe-import-module hook 'hook-gi.py' from 'C:\\Users\\skatl\\AppData\\Local\\Packages\\PythonSoftwareFoundation.Python.3.13_qbz5n2kfra8p0\\LocalCache\\local-packages\\Python313\\site-packages\\PyInstaller\\hooks\\pre_safe_import_module'
+59930 INFO: Processing standard module hook 'hook-matplotlib.backend_bases.py' from 'C:\\Users\\skatl\\AppData\\Local\\Packages\\PythonSoftwareFoundation.Python.3.13_qbz5n2kfra8p0\\LocalCache\\local-packages\\Python313\\site-packages\\PyInstaller\\hooks'
+60069 INFO: Processing standard module hook 'hook-PIL.py' from 'C:\\Users\\skatl\\AppData\\Local\\Packages\\PythonSoftwareFoundation.Python.3.13_qbz5n2kfra8p0\\LocalCache\\local-packages\\Python313\\site-packages\\PyInstaller\\hooks'
+60168 INFO: Processing standard module hook 'hook-PIL.Image.py' from 'C:\\Users\\skatl\\AppData\\Local\\Packages\\PythonSoftwareFoundation.Python.3.13_qbz5n2kfra8p0\\LocalCache\\local-packages\\Python313\\site-packages\\PyInstaller\\hooks'
+60584 INFO: Processing standard module hook 'hook-xml.etree.cElementTree.py' from 'C:\\Users\\skatl\\AppData\\Local\\Packages\\PythonSoftwareFoundation.Python.3.13_qbz5n2kfra8p0\\LocalCache\\local-packages\\Python313\\site-packages\\PyInstaller\\hooks'
+60742 INFO: Processing standard module hook 'hook-PIL.ImageFilter.py' from 'C:\\Users\\skatl\\AppData\\Local\\Packages\\PythonSoftwareFoundation.Python.3.13_qbz5n2kfra8p0\\LocalCache\\local-packages\\Python313\\site-packages\\PyInstaller\\hooks'
+61590 INFO: Processing standard module hook 'hook-jinja2.py' from 'C:\\Users\\skatl\\AppData\\Local\\Packages\\PythonSoftwareFoundation.Python.3.13_qbz5n2kfra8p0\\LocalCache\\local-packages\\Python313\\site-packages\\_pyinstaller_hooks_contrib\\stdhooks'
+62051 INFO: Processing standard module hook 'hook-matplotlib.backends.py' from 'C:\\Users\\skatl\\AppData\\Local\\Packages\\PythonSoftwareFoundation.Python.3.13_qbz5n2kfra8p0\\LocalCache\\local-packages\\Python313\\site-packages\\PyInstaller\\hooks'
+62132 INFO: Processing standard module hook 'hook-matplotlib.pyplot.py' from 'C:\\Users\\skatl\\AppData\\Local\\Packages\\PythonSoftwareFoundation.Python.3.13_qbz5n2kfra8p0\\LocalCache\\local-packages\\Python313\\site-packages\\PyInstaller\\hooks'
+62978 INFO: Processing standard module hook 'hook-dateutil.py' from 'C:\\Users\\skatl\\AppData\\Local\\Packages\\PythonSoftwareFoundation.Python.3.13_qbz5n2kfra8p0\\LocalCache\\local-packages\\Python313\\site-packages\\_pyinstaller_hooks_contrib\\stdhooks'
+63057 INFO: Processing pre-safe-import-module hook 'hook-six.moves.py' from 'C:\\Users\\skatl\\AppData\\Local\\Packages\\PythonSoftwareFoundation.Python.3.13_qbz5n2kfra8p0\\LocalCache\\local-packages\\Python313\\site-packages\\PyInstaller\\hooks\\pre_safe_import_module'
+64380 INFO: Processing standard module hook 'hook-certifi.py' from 'C:\\Users\\skatl\\AppData\\Local\\Packages\\PythonSoftwareFoundation.Python.3.13_qbz5n2kfra8p0\\LocalCache\\local-packages\\Python313\\site-packages\\_pyinstaller_hooks_contrib\\stdhooks'
+72606 INFO: Processing standard module hook 'hook-scipy.py' from 'C:\\Users\\skatl\\AppData\\Local\\Packages\\PythonSoftwareFoundation.Python.3.13_qbz5n2kfra8p0\\LocalCache\\local-packages\\Python313\\site-packages\\PyInstaller\\hooks'
+73326 INFO: Processing standard module hook 'hook-scipy.linalg.py' from 'C:\\Users\\skatl\\AppData\\Local\\Packages\\PythonSoftwareFoundation.Python.3.13_qbz5n2kfra8p0\\LocalCache\\local-packages\\Python313\\site-packages\\PyInstaller\\hooks'
+79137 INFO: Processing standard module hook 'hook-setuptools.py' from 'C:\\Users\\skatl\\AppData\\Local\\Packages\\PythonSoftwareFoundation.Python.3.13_qbz5n2kfra8p0\\LocalCache\\local-packages\\Python313\\site-packages\\PyInstaller\\hooks'
+79150 INFO: Processing pre-safe-import-module hook 'hook-distutils.py' from 'C:\\Users\\skatl\\AppData\\Local\\Packages\\PythonSoftwareFoundation.Python.3.13_qbz5n2kfra8p0\\LocalCache\\local-packages\\Python313\\site-packages\\PyInstaller\\hooks\\pre_safe_import_module'
+79177 INFO: Processing pre-safe-import-module hook 'hook-jaraco.py' from 'C:\\Users\\skatl\\AppData\\Local\\Packages\\PythonSoftwareFoundation.Python.3.13_qbz5n2kfra8p0\\LocalCache\\local-packages\\Python313\\site-packages\\PyInstaller\\hooks\\pre_safe_import_module'
+79178 INFO: Setuptools: 'jaraco' appears to be a full setuptools-vendored copy - creating alias to 'setuptools._vendor.jaraco'!
+79187 INFO: Processing pre-safe-import-module hook 'hook-more_itertools.py' from 'C:\\Users\\skatl\\AppData\\Local\\Packages\\PythonSoftwareFoundation.Python.3.13_qbz5n2kfra8p0\\LocalCache\\local-packages\\Python313\\site-packages\\PyInstaller\\hooks\\pre_safe_import_module'
+79188 INFO: Setuptools: 'more_itertools' appears to be a setuptools-vendored copy - creating alias to 'setuptools._vendor.more_itertools'!
+79504 INFO: Processing standard module hook 'hook-setuptools._vendor.jaraco.text.py' from 'C:\\Users\\skatl\\AppData\\Local\\Packages\\PythonSoftwareFoundation.Python.3.13_qbz5n2kfra8p0\\LocalCache\\local-packages\\Python313\\site-packages\\PyInstaller\\hooks'
+79505 INFO: Processing pre-safe-import-module hook 'hook-importlib_resources.py' from 'C:\\Users\\skatl\\AppData\\Local\\Packages\\PythonSoftwareFoundation.Python.3.13_qbz5n2kfra8p0\\LocalCache\\local-packages\\Python313\\site-packages\\PyInstaller\\hooks\\pre_safe_import_module'
+79513 INFO: Processing pre-safe-import-module hook 'hook-backports.py' from 'C:\\Users\\skatl\\AppData\\Local\\Packages\\PythonSoftwareFoundation.Python.3.13_qbz5n2kfra8p0\\LocalCache\\local-packages\\Python313\\site-packages\\PyInstaller\\hooks\\pre_safe_import_module'
+79514 INFO: Setuptools: 'backports' appears to be a full setuptools-vendored copy - creating alias to 'setuptools._vendor.backports'!
+79676 INFO: Processing pre-safe-import-module hook 'hook-importlib_metadata.py' from 'C:\\Users\\skatl\\AppData\\Local\\Packages\\PythonSoftwareFoundation.Python.3.13_qbz5n2kfra8p0\\LocalCache\\local-packages\\Python313\\site-packages\\PyInstaller\\hooks\\pre_safe_import_module'
+79677 INFO: Setuptools: 'importlib_metadata' appears to be a setuptools-vendored copy - creating alias to 'setuptools._vendor.importlib_metadata'!
+79701 INFO: Processing standard module hook 'hook-setuptools._vendor.importlib_metadata.py' from 'C:\\Users\\skatl\\AppData\\Local\\Packages\\PythonSoftwareFoundation.Python.3.13_qbz5n2kfra8p0\\LocalCache\\local-packages\\Python313\\site-packages\\PyInstaller\\hooks'
+79722 INFO: Processing pre-safe-import-module hook 'hook-zipp.py' from 'C:\\Users\\skatl\\AppData\\Local\\Packages\\PythonSoftwareFoundation.Python.3.13_qbz5n2kfra8p0\\LocalCache\\local-packages\\Python313\\site-packages\\PyInstaller\\hooks\\pre_safe_import_module'
+79722 INFO: Setuptools: 'zipp' appears to be a setuptools-vendored copy - creating alias to 'setuptools._vendor.zipp'!
+79943 INFO: Processing pre-safe-import-module hook 'hook-tomli.py' from 'C:\\Users\\skatl\\AppData\\Local\\Packages\\PythonSoftwareFoundation.Python.3.13_qbz5n2kfra8p0\\LocalCache\\local-packages\\Python313\\site-packages\\PyInstaller\\hooks\\pre_safe_import_module'
+79943 INFO: Setuptools: 'tomli' appears to be a setuptools-vendored copy - creating alias to 'setuptools._vendor.tomli'!
+80927 INFO: Processing pre-safe-import-module hook 'hook-wheel.py' from 'C:\\Users\\skatl\\AppData\\Local\\Packages\\PythonSoftwareFoundation.Python.3.13_qbz5n2kfra8p0\\LocalCache\\local-packages\\Python313\\site-packages\\PyInstaller\\hooks\\pre_safe_import_module'
+80927 INFO: Setuptools: 'wheel' appears to be a setuptools-vendored copy - creating alias to 'setuptools._vendor.wheel'!
+80965 INFO: Processing pre-safe-import-module hook 'hook-win32com.py' from 'C:\\Users\\skatl\\AppData\\Local\\Packages\\PythonSoftwareFoundation.Python.3.13_qbz5n2kfra8p0\\LocalCache\\local-packages\\Python313\\site-packages\\_pyinstaller_hooks_contrib\\pre_safe_import_module'
+81647 INFO: Processing standard module hook 'hook-sqlite3.py' from 'C:\\Users\\skatl\\AppData\\Local\\Packages\\PythonSoftwareFoundation.Python.3.13_qbz5n2kfra8p0\\LocalCache\\local-packages\\Python313\\site-packages\\PyInstaller\\hooks'
+88214 INFO: Processing standard module hook 'hook-scipy.special._ufuncs.py' from 'C:\\Users\\skatl\\AppData\\Local\\Packages\\PythonSoftwareFoundation.Python.3.13_qbz5n2kfra8p0\\LocalCache\\local-packages\\Python313\\site-packages\\PyInstaller\\hooks'
+88375 INFO: Processing standard module hook 'hook-scipy.special._ellip_harm_2.py' from 'C:\\Users\\skatl\\AppData\\Local\\Packages\\PythonSoftwareFoundation.Python.3.13_qbz5n2kfra8p0\\LocalCache\\local-packages\\Python313\\site-packages\\PyInstaller\\hooks'
+90922 INFO: Processing standard module hook 'hook-fsspec.py' from 'C:\\Users\\skatl\\AppData\\Local\\Packages\\PythonSoftwareFoundation.Python.3.13_qbz5n2kfra8p0\\LocalCache\\local-packages\\Python313\\site-packages\\_pyinstaller_hooks_contrib\\stdhooks'
+91752 INFO: Processing standard module hook 'hook-urllib3.py' from 'C:\\Users\\skatl\\AppData\\Local\\Packages\\PythonSoftwareFoundation.Python.3.13_qbz5n2kfra8p0\\LocalCache\\local-packages\\Python313\\site-packages\\_pyinstaller_hooks_contrib\\stdhooks'
+103049 INFO: Processing standard module hook 'hook-torchvision.py' from 'C:\\Users\\skatl\\AppData\\Local\\Packages\\PythonSoftwareFoundation.Python.3.13_qbz5n2kfra8p0\\LocalCache\\local-packages\\Python313\\site-packages\\_pyinstaller_hooks_contrib\\stdhooks'
+103167 INFO: Processing standard module hook 'hook-torchvision.io.image.py' from 'C:\\Users\\skatl\\AppData\\Local\\Packages\\PythonSoftwareFoundation.Python.3.13_qbz5n2kfra8p0\\LocalCache\\local-packages\\Python313\\site-packages\\_pyinstaller_hooks_contrib\\stdhooks'
+105746 INFO: Processing standard module hook 'hook-scipy.io.matlab.py' from 'C:\\Users\\skatl\\AppData\\Local\\Packages\\PythonSoftwareFoundation.Python.3.13_qbz5n2kfra8p0\\LocalCache\\local-packages\\Python313\\site-packages\\PyInstaller\\hooks'
+110220 INFO: Processing standard module hook 'hook-scipy.spatial._ckdtree.py' from 'C:\\Users\\skatl\\AppData\\Local\\Packages\\PythonSoftwareFoundation.Python.3.13_qbz5n2kfra8p0\\LocalCache\\local-packages\\Python313\\site-packages\\PyInstaller\\hooks'
+110737 INFO: Processing standard module hook 'hook-scipy.spatial.transform.rotation.py' from 'C:\\Users\\skatl\\AppData\\Local\\Packages\\PythonSoftwareFoundation.Python.3.13_qbz5n2kfra8p0\\LocalCache\\local-packages\\Python313\\site-packages\\PyInstaller\\hooks'
+111936 INFO: Processing standard module hook 'hook-scipy.stats._stats.py' from 'C:\\Users\\skatl\\AppData\\Local\\Packages\\PythonSoftwareFoundation.Python.3.13_qbz5n2kfra8p0\\LocalCache\\local-packages\\Python313\\site-packages\\PyInstaller\\hooks'
+112528 INFO: Processing standard module hook 'hook-scipy.sparse.csgraph.py' from 'C:\\Users\\skatl\\AppData\\Local\\Packages\\PythonSoftwareFoundation.Python.3.13_qbz5n2kfra8p0\\LocalCache\\local-packages\\Python313\\site-packages\\PyInstaller\\hooks'
+114983 INFO: Processing standard module hook 'hook-xml.dom.domreg.py' from 'C:\\Users\\skatl\\AppData\\Local\\Packages\\PythonSoftwareFoundation.Python.3.13_qbz5n2kfra8p0\\LocalCache\\local-packages\\Python313\\site-packages\\PyInstaller\\hooks'
+118011 INFO: Processing standard module hook 'hook-zoneinfo.py' from 'C:\\Users\\skatl\\AppData\\Local\\Packages\\PythonSoftwareFoundation.Python.3.13_qbz5n2kfra8p0\\LocalCache\\local-packages\\Python313\\site-packages\\_pyinstaller_hooks_contrib\\stdhooks'
+119531 INFO: Processing pre-safe-import-module hook 'hook-tensorflow.py' from 'C:\\Users\\skatl\\AppData\\Local\\Packages\\PythonSoftwareFoundation.Python.3.13_qbz5n2kfra8p0\\LocalCache\\local-packages\\Python313\\site-packages\\_pyinstaller_hooks_contrib\\pre_safe_import_module'
+120040 INFO: Processing pre-find-module-path hook 'hook-tkinter.py' from 'C:\\Users\\skatl\\AppData\\Local\\Packages\\PythonSoftwareFoundation.Python.3.13_qbz5n2kfra8p0\\LocalCache\\local-packages\\Python313\\site-packages\\PyInstaller\\hooks\\pre_find_module_path'
+120041 INFO: TclTkInfo: initializing cached Tcl/Tk info...
+121153 INFO: Processing standard module hook 'hook-_tkinter.py' from 'C:\\Users\\skatl\\AppData\\Local\\Packages\\PythonSoftwareFoundation.Python.3.13_qbz5n2kfra8p0\\LocalCache\\local-packages\\Python313\\site-packages\\PyInstaller\\hooks'
+122668 INFO: Analyzing hidden import 'tensorflow.keras'
+122668 ERROR: Hidden import 'tensorflow.keras' not found
+122668 INFO: Processing module hooks (post-graph stage)...
+130631 WARNING: Hidden import "tzdata" not found!
+130637 INFO: Processing standard module hook 'hook-matplotlib.backends.py' from 'C:\\Users\\skatl\\AppData\\Local\\Packages\\PythonSoftwareFoundation.Python.3.13_qbz5n2kfra8p0\\LocalCache\\local-packages\\Python313\\site-packages\\PyInstaller\\hooks'
+130638 INFO: Matplotlib backend selection method: automatic discovery of used backends
+130669 INFO: Discovered Matplotlib backend(s) via `matplotlib.use()` call in module 'sympy.testing.runtests': ['Agg', 'Agg']
+130671 INFO: The following Matplotlib backends were discovered by scanning for `matplotlib.use()` calls: ['Agg']. If your backend of choice is not in this list, either add a `matplotlib.use()` call to your code, or configure the backend collection via hook options (see: https://pyinstaller.org/en/stable/hooks-config.html#matplotlib-hooks).
+130671 INFO: Selected matplotlib backends: ['Agg']
+130922 INFO: Processing standard module hook 'hook-PIL.SpiderImagePlugin.py' from 'C:\\Users\\skatl\\AppData\\Local\\Packages\\PythonSoftwareFoundation.Python.3.13_qbz5n2kfra8p0\\LocalCache\\local-packages\\Python313\\site-packages\\PyInstaller\\hooks'
+130976 WARNING: Hidden import "scipy.special._cdflib" not found!
+131015 INFO: Processing standard module hook 'hook-_tkinter.py' from 'C:\\Users\\skatl\\AppData\\Local\\Packages\\PythonSoftwareFoundation.Python.3.13_qbz5n2kfra8p0\\LocalCache\\local-packages\\Python313\\site-packages\\PyInstaller\\hooks'
+131057 INFO: Performing binary vs. data reclassification (1412 entries)
+131366 INFO: Looking for ctypes DLLs
+131504 WARNING: Ignoring /usr/lib64/libgomp.so.1 imported from C:\Users\skatl\AppData\Local\Packages\PythonSoftwareFoundation.Python.3.13_qbz5n2kfra8p0\LocalCache\local-packages\Python313\site-packages\torch\_inductor\codecache.py - only basenames are supported with ctypes imports!
+131772 INFO: Analyzing run-time hooks ...
+131790 INFO: Including run-time hook 'pyi_rth_inspect.py' from 'C:\\Users\\skatl\\AppData\\Local\\Packages\\PythonSoftwareFoundation.Python.3.13_qbz5n2kfra8p0\\LocalCache\\local-packages\\Python313\\site-packages\\PyInstaller\\hooks\\rthooks'
+131793 INFO: Including run-time hook 'pyi_rth_pkgutil.py' from 'C:\\Users\\skatl\\AppData\\Local\\Packages\\PythonSoftwareFoundation.Python.3.13_qbz5n2kfra8p0\\LocalCache\\local-packages\\Python313\\site-packages\\PyInstaller\\hooks\\rthooks'
+131795 INFO: Including run-time hook 'pyi_rth_multiprocessing.py' from 'C:\\Users\\skatl\\AppData\\Local\\Packages\\PythonSoftwareFoundation.Python.3.13_qbz5n2kfra8p0\\LocalCache\\local-packages\\Python313\\site-packages\\PyInstaller\\hooks\\rthooks'
+131797 INFO: Including run-time hook 'pyi_rth_mplconfig.py' from 'C:\\Users\\skatl\\AppData\\Local\\Packages\\PythonSoftwareFoundation.Python.3.13_qbz5n2kfra8p0\\LocalCache\\local-packages\\Python313\\site-packages\\PyInstaller\\hooks\\rthooks'
+131798 INFO: Processing pre-find-module-path hook 'hook-_pyi_rth_utils.py' from 'C:\\Users\\skatl\\AppData\\Local\\Packages\\PythonSoftwareFoundation.Python.3.13_qbz5n2kfra8p0\\LocalCache\\local-packages\\Python313\\site-packages\\PyInstaller\\hooks\\pre_find_module_path'
+131799 INFO: Processing standard module hook 'hook-_pyi_rth_utils.py' from 'C:\\Users\\skatl\\AppData\\Local\\Packages\\PythonSoftwareFoundation.Python.3.13_qbz5n2kfra8p0\\LocalCache\\local-packages\\Python313\\site-packages\\PyInstaller\\hooks'
+131808 INFO: Including run-time hook 'pyi_rth_setuptools.py' from 'C:\\Users\\skatl\\AppData\\Local\\Packages\\PythonSoftwareFoundation.Python.3.13_qbz5n2kfra8p0\\LocalCache\\local-packages\\Python313\\site-packages\\PyInstaller\\hooks\\rthooks'
+131810 INFO: Including run-time hook 'pyi_rth__tkinter.py' from 'C:\\Users\\skatl\\AppData\\Local\\Packages\\PythonSoftwareFoundation.Python.3.13_qbz5n2kfra8p0\\LocalCache\\local-packages\\Python313\\site-packages\\PyInstaller\\hooks\\rthooks'
+131811 INFO: Including run-time hook 'pyi_rth_pyside6.py' from 'C:\\Users\\skatl\\AppData\\Local\\Packages\\PythonSoftwareFoundation.Python.3.13_qbz5n2kfra8p0\\LocalCache\\local-packages\\Python313\\site-packages\\PyInstaller\\hooks\\rthooks'
+131921 INFO: Creating base_library.zip...
+131977 INFO: Looking for dynamic libraries
+W0220 10:17:26.041000 5896 torch\distributed\elastic\multiprocessing\redirects.py:29] NOTE: Redirects are currently not supported in Windows or MacOs.
+C:\Users\skatl\AppData\Local\Packages\PythonSoftwareFoundation.Python.3.13_qbz5n2kfra8p0\LocalCache\local-packages\Python313\site-packages\PyInstaller\building\build_main.py:227: DeprecationWarning: `torch.distributed._sharding_spec` will be deprecated, use `torch.distributed._shard.sharding_spec` instead
+  __import__(package)
+C:\Users\skatl\AppData\Local\Packages\PythonSoftwareFoundation.Python.3.13_qbz5n2kfra8p0\LocalCache\local-packages\Python313\site-packages\PyInstaller\building\build_main.py:227: DeprecationWarning: `torch.distributed._sharded_tensor` will be deprecated, use `torch.distributed._shard.sharded_tensor` instead
+  __import__(package)
+C:\Users\skatl\AppData\Local\Packages\PythonSoftwareFoundation.Python.3.13_qbz5n2kfra8p0\LocalCache\local-packages\Python313\site-packages\PyInstaller\building\build_main.py:227: DeprecationWarning: `torch.distributed._shard.checkpoint` will be deprecated, use `torch.distributed.checkpoint` instead
+  __import__(package)
+140901 INFO: Extra DLL search directories (AddDllDirectory): ['C:\\Users\\skatl\\AppData\\Local\\Packages\\PythonSoftwareFoundation.Python.3.13_qbz5n2kfra8p0\\LocalCache\\local-packages\\Python313\\site-packages\\shiboken6', 'C:\\Users\\skatl\\AppData\\Local\\Packages\\PythonSoftwareFoundation.Python.3.13_qbz5n2kfra8p0\\LocalCache\\local-packages\\Python313\\site-packages\\numpy.libs', 'C:\\Users\\skatl\\AppData\\Local\\Packages\\PythonSoftwareFoundation.Python.3.13_qbz5n2kfra8p0\\LocalCache\\local-packages\\Python313\\site-packages\\cv2\\../../x64/vc17/bin', 'C:\\Users\\skatl\\AppData\\Local\\Packages\\PythonSoftwareFoundation.Python.3.13_qbz5n2kfra8p0\\LocalCache\\local-packages\\Python313\\site-packages\\torch\\lib', 'C:\\Users\\skatl\\AppData\\Local\\Packages\\PythonSoftwareFoundation.Python.3.13_qbz5n2kfra8p0\\LocalCache\\local-packages\\Python313\\site-packages\\torchvision', 'C:\\Users\\skatl\\AppData\\Local\\Packages\\PythonSoftwareFoundation.Python.3.13_qbz5n2kfra8p0\\LocalCache\\local-packages\\Python313\\site-packages\\torchvision', 'C:\\Users\\skatl\\AppData\\Local\\Packages\\PythonSoftwareFoundation.Python.3.13_qbz5n2kfra8p0\\LocalCache\\local-packages\\Python313\\site-packages\\torchvision', 'C:\\Users\\skatl\\AppData\\Local\\Packages\\PythonSoftwareFoundation.Python.3.13_qbz5n2kfra8p0\\LocalCache\\local-packages\\Python313\\site-packages\\torchvision', 'C:\\Users\\skatl\\AppData\\Local\\Packages\\PythonSoftwareFoundation.Python.3.13_qbz5n2kfra8p0\\LocalCache\\local-packages\\Python313\\site-packages\\scipy.libs']
+140901 INFO: Extra DLL search directories (PATH): ['C:\\Users\\skatl\\AppData\\Local\\Packages\\PythonSoftwareFoundation.Python.3.13_qbz5n2kfra8p0\\LocalCache\\local-packages\\Python313\\site-packages\\cv2\\../../x64/vc17/bin', 'C:\\Users\\skatl\\AppData\\Local\\Packages\\PythonSoftwareFoundation.Python.3.13_qbz5n2kfra8p0\\LocalCache\\local-packages\\Python313\\site-packages\\PySide6']
+144125 INFO: Warnings written to E:\app_dir\claude_code\DL-Tool\build\visionace\warn-visionace.txt
+144518 INFO: Graph cross-reference written to E:\app_dir\claude_code\DL-Tool\build\visionace\xref-visionace.html
+145048 INFO: checking PYZ
+145092 INFO: Building because E:\app_dir\claude_code\DL-Tool\core\project_manager.py changed
+145092 INFO: Building PYZ (ZlibArchive) E:\app_dir\claude_code\DL-Tool\build\visionace\PYZ-00.pyz
+151119 INFO: Building PYZ (ZlibArchive) E:\app_dir\claude_code\DL-Tool\build\visionace\PYZ-00.pyz completed successfully.
+151288 INFO: checking PKG
+151288 INFO: Building because E:\app_dir\claude_code\DL-Tool\build\visionace\PYZ-00.pyz changed
+151289 INFO: Building PKG (CArchive) VisionAce.pkg
+152449 INFO: Building PKG (CArchive) VisionAce.pkg completed successfully.
+152451 INFO: Bootloader C:\Users\skatl\AppData\Local\Packages\PythonSoftwareFoundation.Python.3.13_qbz5n2kfra8p0\LocalCache\local-packages\Python313\site-packages\PyInstaller\bootloader\Windows-64bit-intel\runw.exe
+152451 INFO: checking EXE
+152452 INFO: Rebuilding EXE-00.toc because pkg is more recent
+152452 INFO: Building EXE from EXE-00.toc
+152454 INFO: Copying bootloader EXE to E:\app_dir\claude_code\DL-Tool\build\visionace\VisionAce.exe
+152478 INFO: Copying icon to EXE
+152493 INFO: Copying 0 resources to EXE
+152493 INFO: Embedding manifest in EXE
+152507 INFO: Appending PKG archive to EXE
+153658 INFO: Fixing EXE headers
+156167 INFO: Building EXE from EXE-00.toc completed successfully.
+156201 INFO: checking COLLECT
+156237 INFO: Removing dir E:\app_dir\claude_code\DL-Tool\dist\VisionAce
+162288 INFO: Building COLLECT COLLECT-00.toc
+251703 INFO: Building COLLECT COLLECT-00.toc completed successfully.
+251846 INFO: Build complete! The results are available in: E:\app_dir\claude_code\DL-Tool\dist

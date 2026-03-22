@@ -2,6 +2,7 @@
 
 import { AuthProvider } from '@/contexts/AuthContext';
 import { ToastProvider } from '@/components/ToastProvider';
+import OnboardingWrapper from '@/components/OnboardingWrapper';
 import { ReactNode } from 'react';
 
 /**
@@ -12,7 +13,9 @@ export function ClientAuthProvider({ children }: { children: ReactNode }) {
   return (
     <AuthProvider>
       <ToastProvider />
-      {children}
+      <OnboardingWrapper>
+        {children}
+      </OnboardingWrapper>
     </AuthProvider>
   );
 }

@@ -30,6 +30,7 @@ import {
 } from 'firebase/firestore';
 import { app, isConfigured } from './firebase';
 import { HistoryRecord, SajuInput, MBTIType, Element } from '@/types';
+import { NotificationSettings } from './notifications';
 
 /**
  * User preferences stored in Firestore
@@ -38,6 +39,7 @@ export interface UserPreferences {
   mbti?: MBTIType;
   element?: Element;
   birthInfo?: SajuInput;
+  notificationSettings?: NotificationSettings;
   createdAt?: Timestamp;
   updatedAt?: Timestamp;
 }

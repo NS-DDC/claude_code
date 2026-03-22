@@ -1,0 +1,237 @@
+{
+  "version": "1.0.0",
+  "lastScanned": 1774165457189,
+  "projectRoot": "E:\\app_dir\\claude_code",
+  "techStack": {
+    "languages": [],
+    "frameworks": [],
+    "packageManager": null,
+    "runtime": null
+  },
+  "build": {
+    "buildCommand": null,
+    "testCommand": null,
+    "lintCommand": null,
+    "devCommand": null,
+    "scripts": {}
+  },
+  "conventions": {
+    "namingStyle": null,
+    "importStyle": null,
+    "testPattern": null,
+    "fileOrganization": null
+  },
+  "structure": {
+    "isMonorepo": false,
+    "workspaces": [],
+    "mainDirectories": [],
+    "gitBranches": {
+      "defaultBranch": "master",
+      "branchingStrategy": null
+    }
+  },
+  "customNotes": [],
+  "directoryMap": {
+    "couple-app": {
+      "path": "couple-app",
+      "purpose": null,
+      "fileCount": 11,
+      "lastAccessed": 1774165457145,
+      "keyFiles": [
+        "tailwind.config.ts",
+        "next-env.d.ts",
+        "capacitor.config.ts",
+        "next.config.js",
+        "package-lock.json"
+      ]
+    },
+    "lucky-planet": {
+      "path": "lucky-planet",
+      "purpose": null,
+      "fileCount": 11,
+      "lastAccessed": 1774165457147,
+      "keyFiles": [
+        "nul",
+        "package.json",
+        "next.config.mjs",
+        "tsconfig.json",
+        "postcss.config.mjs"
+      ]
+    },
+    "DL-Tool": {
+      "path": "DL-Tool",
+      "purpose": null,
+      "fileCount": 8,
+      "lastAccessed": 1774165457148,
+      "keyFiles": [
+        "requirements.txt",
+        "main.py",
+        "build.bat",
+        "config.py",
+        "README.md"
+      ]
+    },
+    "Saju-MBTI": {
+      "path": "Saju-MBTI",
+      "purpose": null,
+      "fileCount": 17,
+      "lastAccessed": 1774165457150,
+      "keyFiles": [
+        "tailwind.config.js",
+        "postcss.config.js",
+        "next-env.d.ts",
+        "BUILD_APK.md",
+        "README.md"
+      ]
+    },
+    "FileRecoveryApp": {
+      "path": "FileRecoveryApp",
+      "purpose": null,
+      "fileCount": 7,
+      "lastAccessed": 1774165457150,
+      "keyFiles": [
+        "gradlew",
+        "build.gradle.kts",
+        "gradlew.bat",
+        "settings.gradle.kts",
+        "gradle.properties"
+      ]
+    },
+    "couple-app\\src": {
+      "path": "couple-app\\src",
+      "purpose": "Source code",
+      "fileCount": 0,
+      "lastAccessed": 1774165457152,
+      "keyFiles": []
+    },
+    "couple-app\\public": {
+      "path": "couple-app\\public",
+      "purpose": "Public files",
+      "fileCount": 2,
+      "lastAccessed": 1774165457153,
+      "keyFiles": [
+        "manifest.json",
+        "sw.js"
+      ]
+    },
+    "couple-app\\node_modules": {
+      "path": "couple-app\\node_modules",
+      "purpose": "Dependencies",
+      "fileCount": 1,
+      "lastAccessed": 1774165457156,
+      "keyFiles": []
+    },
+    "couple-app\\out": {
+      "path": "couple-app\\out",
+      "purpose": "Build output",
+      "fileCount": 1,
+      "lastAccessed": 1774165457157,
+      "keyFiles": [
+        "index.html"
+      ]
+    },
+    "lucky-planet\\src": {
+      "path": "lucky-planet\\src",
+      "purpose": "Source code",
+      "fileCount": 0,
+      "lastAccessed": 1774165457158,
+      "keyFiles": []
+    },
+    "lucky-planet\\public": {
+      "path": "lucky-planet\\public",
+      "purpose": "Public files",
+      "fileCount": 1,
+      "lastAccessed": 1774165457160,
+      "keyFiles": [
+        "manifest.json"
+      ]
+    },
+    "DL-Tool\\dist": {
+      "path": "DL-Tool\\dist",
+      "purpose": "Distribution/build output",
+      "fileCount": 11,
+      "lastAccessed": 1774165457164,
+      "keyFiles": [
+        "VisionAce.zip",
+        "VisionAce_v1.1.0.zip",
+        "VisionAce_v1.2.0.zip"
+      ]
+    },
+    "Saju-MBTI\\src": {
+      "path": "Saju-MBTI\\src",
+      "purpose": "Source code",
+      "fileCount": 0,
+      "lastAccessed": 1774165457166,
+      "keyFiles": []
+    },
+    "Saju-MBTI\\node_modules": {
+      "path": "Saju-MBTI\\node_modules",
+      "purpose": "Dependencies",
+      "fileCount": 1,
+      "lastAccessed": 1774165457168,
+      "keyFiles": []
+    },
+    "FileRecoveryApp\\app": {
+      "path": "FileRecoveryApp\\app",
+      "purpose": "Application code",
+      "fileCount": 3,
+      "lastAccessed": 1774165457169,
+      "keyFiles": [
+        "proguard-rules.pro",
+        "build.gradle.kts",
+        "release-keystore.jks"
+      ]
+    }
+  },
+  "hotPaths": [
+    {
+      "path": "C:\\Users\\skatl\\.claude\\hud\\omc-hud.mjs",
+      "accessCount": 2,
+      "lastAccessed": 1774167750208,
+      "type": "file"
+    },
+    {
+      "path": "C:\\Users\\skatl\\.claude\\settings.json",
+      "accessCount": 2,
+      "lastAccessed": 1774168408767,
+      "type": "file"
+    },
+    {
+      "path": "C:\\Users\\skatl\\.claude\\plugins\\cache\\oh-my-claudecode\\oh-my-claudecode\\4.8.0\\skills\\omc-setup\\phases\\01-install-claude-md.md",
+      "accessCount": 1,
+      "lastAccessed": 1774166105943,
+      "type": "file"
+    },
+    {
+      "path": "C:\\Users\\skatl\\.claude\\plugins\\cache\\oh-my-claudecode\\oh-my-claudecode\\4.8.0\\skills\\omc-setup\\phases\\02-configure.md",
+      "accessCount": 1,
+      "lastAccessed": 1774167470257,
+      "type": "file"
+    },
+    {
+      "path": "C:\\Users\\skatl\\.claude\\plugins\\cache\\oh-my-claudecode\\oh-my-claudecode\\4.8.0\\skills\\omc-setup\\phases\\03-integrations.md",
+      "accessCount": 1,
+      "lastAccessed": 1774167889103,
+      "type": "file"
+    },
+    {
+      "path": "C:\\Users\\skatl\\.claude\\plugins\\cache\\oh-my-claudecode\\oh-my-claudecode\\4.8.0\\skills\\omc-setup\\phases\\04-welcome.md",
+      "accessCount": 1,
+      "lastAccessed": 1774168436712,
+      "type": "file"
+    },
+    {
+      "path": "Saju-MBTI\\package.json",
+      "accessCount": 1,
+      "lastAccessed": 1774171083733,
+      "type": "file"
+    },
+    {
+      "path": "Saju-MBTI\\src\\app\\settings\\page.tsx",
+      "accessCount": 1,
+      "lastAccessed": 1774171085062,
+      "type": "file"
+    }
+  ],
+  "userDirectives": []
+}

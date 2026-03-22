@@ -2,6 +2,32 @@
 @tailwind components;
 @tailwind utilities;
 
+:root {
+  /* Light mode colors */
+  --background-gradient-start: #E0F2F1;
+  --background-gradient-mid: #B2DFDB;
+  --background-gradient-end: #80CBC4;
+  --text-primary: #4A4A4A;
+  --text-secondary: #6B5B52;
+  --card-background: rgba(255, 255, 255, 0.7);
+  --card-border: rgba(255, 255, 255, 0.3);
+  --royal-gold: #D4AF37;
+  --pastel-brown: #A1887F;
+}
+
+[data-theme="dark"] {
+  /* Dark mode colors */
+  --background-gradient-start: #1a1a2e;
+  --background-gradient-mid: #16213e;
+  --background-gradient-end: #0f3460;
+  --text-primary: #E8E8E8;
+  --text-secondary: #B8B8B8;
+  --card-background: rgba(30, 30, 46, 0.8);
+  --card-border: rgba(255, 255, 255, 0.1);
+  --royal-gold: #FFD700;
+  --pastel-brown: #C4A57B;
+}
+
 * {
   box-sizing: border-box;
   padding: 0;
@@ -12,12 +38,13 @@ html,
 body {
   max-width: 100vw;
   overflow-x: hidden;
-  background: linear-gradient(135deg, #E0F2F1 0%, #B2DFDB 50%, #80CBC4 100%);
+  background: linear-gradient(135deg, var(--background-gradient-start) 0%, var(--background-gradient-mid) 50%, var(--background-gradient-end) 100%);
   min-height: 100vh;
+  transition: background 0.3s ease;
 }
 
 body {
-  color: #4A4A4A;
+  color: var(--text-primary);
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
     'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
     sans-serif;
@@ -28,12 +55,6 @@ body {
 a {
   color: inherit;
   text-decoration: none;
-}
-
-@media (prefers-color-scheme: dark) {
-  html {
-    color-scheme: light;
-  }
 }
 
 /* 사주 오행 색상 */

@@ -1,0 +1,10 @@
+{
+  "active": true,
+  "skill_name": "mcp-setup",
+  "session_id": "acd039bf-1123-492c-866f-cf89ce2bf19e",
+  "started_at": "2026-03-14T00:49:51.722Z",
+  "last_checked_at": "2026-03-14T01:01:29.049Z",
+  "reinforcement_count": 1,
+  "max_reinforcements": 5,
+  "stale_ttl_ms": 900000
+}

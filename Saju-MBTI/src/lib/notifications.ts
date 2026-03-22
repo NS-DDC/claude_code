@@ -1,5 +1,7 @@
 import { LocalNotifications } from '@capacitor/local-notifications';
 import { PushNotifications } from '@capacitor/push-notifications';
+import { preferencesService } from './firestore';
+import { User } from 'firebase/auth';
 
 export interface NotificationSettings {
   enabled: boolean;
@@ -18,9 +20,23 @@ const DEFAULT_SETTINGS: NotificationSettings = {
 
 export const notificationService = {
   // 설정 가져오기
-  getSettings(): NotificationSettings {
+  async getSettings(user?: User | null): Promise<NotificationSettings> {
     if (typeof window === 'undefined') return DEFAULT_SETTINGS;
 
+    // Load from Firestore if user is authenticated
+    if (user?.uid) {
+      try {
+        const prefs = await preferencesService.get(user.uid);
+        if (prefs?.notificationSettings) {
+          return prefs.notificationSettings;
+        }
+      } catch (error) {
+        console.error('Failed to load notification settings from Firestore:', error);
+        // Fall through to localStorage on error
+      }
+    }
+
+    // Fallback to localStorage for non-authenticated users or on error
     try {
       const saved = localStorage.getItem(SETTINGS_KEY);
       return saved ? JSON.parse(saved) : DEFAULT_SETTINGS;
@@ -30,13 +46,29 @@ export const notificationService = {
   },
 
   // 설정 저장
-  saveSettings(settings: NotificationSettings): void {
+  async saveSettings(settings: NotificationSettings, user?: User | null): Promise<void> {
     if (typeof window === 'undefined') return;
 
+    // Save to Firestore if user is authenticated
+    if (user?.uid) {
+      try {
+        const existingPrefs = await preferencesService.get(user.uid);
+        await preferencesService.save(user.uid, {
+          ...existingPrefs,
+          notificationSettings: settings,
+        });
+        console.log('Notification settings saved to Firestore');
+      } catch (error) {
+        console.error('Failed to save notification settings to Firestore:', error);
+        // Fall through to localStorage on error
+      }
+    }
+
+    // Always save to localStorage as backup/fallback
     try {
       localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
     } catch (error) {
-      console.error('Failed to save notification settings:', error);
+      console.error('Failed to save notification settings to localStorage:', error);
     }
   },
 

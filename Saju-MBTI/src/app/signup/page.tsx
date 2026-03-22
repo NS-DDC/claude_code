@@ -80,7 +80,7 @@ export default function SignupPage() {
       await signup(email, password);
       toast.success('Account created successfully!');
 
-      // Redirect to home page (or onboarding if it exists)
+      // Redirect to home page - onboarding will auto-show
       setTimeout(() => {
         router.push('/');
       }, 1500);
@@ -99,7 +99,7 @@ export default function SignupPage() {
       await loginWithGoogle();
       toast.success('Signed up with Google successfully!');
 
-      // Redirect to home page
+      // Redirect to home page - onboarding will auto-show
       setTimeout(() => {
         router.push('/');
       }, 1500);

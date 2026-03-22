@@ -1,0 +1,236 @@
+{
+  "projectName": "Saju-MBTI App Enhancement & Auth System",
+  "version": "1.0.0",
+  "createdAt": "2026-03-17",
+  "description": "Add authentication system, improve data persistence, enhance user experience, and add missing critical features to the Saju-MBTI app",
+  "userStories": [
+    {
+      "id": "US-001",
+      "title": "Add Firebase Authentication System",
+      "priority": "CRITICAL",
+      "description": "Implement Firebase Auth with email/password and social login (Google, Apple) to enable user accounts and cross-device data sync",
+      "acceptanceCriteria": [
+        "Firebase SDK installed and configured in package.json",
+        "Firebase config file created at src/lib/firebase.ts with auth initialization",
+        "AuthContext created at src/contexts/AuthContext.tsx with login/logout/signup functions",
+        "Login page created at src/app/login/page.tsx with email/password form",
+        "Signup page created at src/app/signup/page.tsx with email/password form",
+        "Google OAuth login button functional on login page",
+        "Protected route middleware added to require auth for history/settings pages",
+        "User can successfully sign up with email/password",
+        "User can successfully log in with email/password",
+        "User session persists across page refreshes",
+        "Logout functionality works and clears session"
+      ],
+      "estimatedEffort": "HIGH",
+      "dependencies": [],
+      "passes": true,
+      "completedAt": "2026-03-17"
+    },
+    {
+      "id": "US-002",
+      "title": "Migrate localStorage to Firebase Firestore",
+      "priority": "HIGH",
+      "description": "Replace localStorage-based storage with Firestore to enable cloud sync and data persistence across devices",
+      "acceptanceCriteria": [
+        "Firestore service created at src/lib/firestore.ts with CRUD operations",
+        "storage.ts refactored to use Firestore instead of localStorage as backend",
+        "User history saved to Firestore under users/{userId}/history collection",
+        "User preferences saved to Firestore under users/{userId}/preferences document",
+        "Backward compatibility: existing localStorage data migrated to Firestore on first login",
+        "History page loads data from Firestore for authenticated users",
+        "Settings page saves to Firestore for authenticated users",
+        "All data operations work offline with Firestore offline persistence",
+        "Data syncs automatically when coming back online"
+      ],
+      "estimatedEffort": "HIGH",
+      "dependencies": ["US-001"],
+      "passes": true,
+      "completedAt": "2026-03-17"
+    },
+    {
+      "id": "US-003",
+      "title": "Add User Profile Page",
+      "priority": "MEDIUM",
+      "description": "Create comprehensive user profile management with personal info, saved MBTI, birth info, and account settings",
+      "acceptanceCriteria": [
+        "Profile page created at src/app/profile/page.tsx",
+        "Displays user email, display name, and profile photo",
+        "Allows editing display name and uploading profile photo",
+        "Shows saved MBTI type and allows updating it",
+        "Shows saved birth information for Saju calculations",
+        "Profile data saves to Firestore users/{userId}/profile",
+        "Navigation link added to BottomNav for profile access",
+        "TypeScript types updated in src/types/index.ts for UserProfile"
+      ],
+      "estimatedEffort": "MEDIUM",
+      "dependencies": ["US-001", "US-002"],
+      "passes": true,
+      "completedAt": "2026-03-17"
+    },
+    {
+      "id": "US-004",
+      "title": "Implement Push Notifications",
+      "priority": "MEDIUM",
+      "description": "Use existing @capacitor/push-notifications dependency to send daily fortune reminders and compatibility alerts",
+      "acceptanceCriteria": [
+        "Push notification service created at src/lib/pushNotifications.ts",
+        "User can enable/disable notifications in settings page",
+        "User can choose notification time for daily fortune (default 9:00 AM)",
+        "Daily fortune notification sent at chosen time with preview text",
+        "Notification permission requested on first app launch",
+        "Clicking notification opens relevant page (daily fortune page)",
+        "Notification preferences saved to Firestore",
+        "Works on both Android and iOS platforms"
+      ],
+      "estimatedEffort": "MEDIUM",
+      "dependencies": ["US-002"],
+      "passes": true,
+      "completedAt": "2026-03-22"
+    },
+    {
+      "id": "US-005",
+      "title": "Add Error Boundaries and Error Handling",
+      "priority": "HIGH",
+      "description": "Implement comprehensive error handling, error boundaries, and user-friendly error messages throughout the app",
+      "acceptanceCriteria": [
+        "React Error Boundary component created at src/components/ErrorBoundary.tsx",
+        "Error boundary wraps all pages in layout.tsx",
+        "Custom error page created at src/app/error.tsx",
+        "Toast notification system added for user feedback (success/error/info)",
+        "All async operations have try-catch with user-friendly error messages",
+        "Network errors show retry button",
+        "Form validation errors display inline near form fields",
+        "Loading states added to all data fetching operations",
+        "404 page created at src/app/not-found.tsx"
+      ],
+      "estimatedEffort": "MEDIUM",
+      "dependencies": [],
+      "passes": true,
+      "completedAt": "2026-03-17"
+    },
+    {
+      "id": "US-006",
+      "title": "Add Social Sharing Features",
+      "priority": "LOW",
+      "description": "Use @capacitor/share to allow users to share their fortune results, MBTI compatibility, and destiny characters",
+      "acceptanceCriteria": [
+        "Share button added to Saju result page with formatted text and emoji",
+        "Share button added to MBTI compatibility page",
+        "Share button added to Destiny character page",
+        "Share button added to Daily fortune widget",
+        "Share function creates formatted message with app name and result summary",
+        "Share works on both Android and iOS using Capacitor Share API",
+        "Share includes deep link back to app (if result has shareable ID)"
+      ],
+      "estimatedEffort": "LOW",
+      "dependencies": [],
+      "passes": true,
+      "completedAt": "2026-03-17"
+    },
+    {
+      "id": "US-007",
+      "title": "Optimize Performance and Bundle Size",
+      "priority": "MEDIUM",
+      "description": "Improve app performance with code splitting, lazy loading, and bundle optimization",
+      "acceptanceCriteria": [
+        "Dynamic imports added for large components (RadarChart, FloatingOrbs)",
+        "Image optimization configured in next.config.js",
+        "Unused dependencies removed from package.json",
+        "Bundle analyzer report generated showing <500KB main bundle",
+        "Loading skeletons added for async-loaded components",
+        "Framer-motion animations optimized with will-change CSS",
+        "next/dynamic used for heavy calculation modules",
+        "Lighthouse performance score >90 on mobile"
+      ],
+      "estimatedEffort": "MEDIUM",
+      "dependencies": [],
+      "passes": true,
+      "completedAt": "2026-03-17"
+    },
+    {
+      "id": "US-008",
+      "title": "Add Comprehensive Testing Suite",
+      "priority": "MEDIUM",
+      "description": "Set up testing infrastructure with unit tests, integration tests, and E2E tests",
+      "acceptanceCriteria": [
+        "Jest and React Testing Library installed",
+        "Test setup file created at src/setupTests.ts",
+        "Unit tests created for src/lib/sajuCalculator.ts with >80% coverage",
+        "Unit tests created for src/lib/mbtiCompatibility.ts with >80% coverage",
+        "Component tests created for GlassCard, BottomNav, DailyFortuneWidget",
+        "Integration tests for auth flow (login, signup, logout)",
+        "Test command 'npm test' runs all tests successfully",
+        "CI/CD workflow would pass (dry-run test suite completes without errors)"
+      ],
+      "estimatedEffort": "HIGH",
+      "dependencies": [],
+      "passes": true,
+      "completedAt": "2026-03-22"
+    },
+    {
+      "id": "US-009",
+      "title": "Enhance Settings Page with Theme and Preferences",
+      "priority": "LOW",
+      "description": "Expand settings page with theme toggle, language selection, data export, and account management",
+      "acceptanceCriteria": [
+        "Dark mode toggle added to settings page",
+        "Dark mode theme CSS variables defined in globals.css",
+        "Theme preference saved to Firestore and applied on load",
+        "Export data button generates JSON file of user's history and preferences",
+        "Delete account button with confirmation modal",
+        "Clear history button with confirmation",
+        "App version displayed at bottom of settings",
+        "Privacy policy and terms of service links added"
+      ],
+      "estimatedEffort": "LOW",
+      "dependencies": ["US-002", "US-003"],
+      "passes": true,
+      "completedAt": "2026-03-22"
+    },
+    {
+      "id": "US-010",
+      "title": "Add Onboarding Flow for New Users",
+      "priority": "LOW",
+      "description": "Create welcoming onboarding experience that collects initial MBTI and birth info",
+      "acceptanceCriteria": [
+        "Onboarding component created at src/components/Onboarding.tsx",
+        "Step 1: Welcome screen with app introduction",
+        "Step 2: MBTI selection with visual type descriptions",
+        "Step 3: Birth information input form",
+        "Step 4: Notification permission request",
+        "Onboarding shows only once after first signup",
+        "Skip button allows users to complete onboarding later",
+        "Collected data saves to user profile in Firestore",
+        "Smooth animations between onboarding steps"
+      ],
+      "estimatedEffort": "MEDIUM",
+      "dependencies": ["US-001", "US-003"],
+      "passes": true,
+      "completedAt": "2026-03-22"
+    }
+  ],
+  "technicalNotes": {
+    "currentStack": "Next.js 16.1.6, React 18.2, Capacitor 5.6, Framer Motion, Tailwind CSS, TypeScript",
+    "newDependencies": [
+      "firebase (auth + firestore)",
+      "react-hot-toast (notifications)",
+      "jest + @testing-library/react",
+      "next-themes (dark mode)"
+    ],
+    "securityConsiderations": [
+      "Firebase security rules must restrict user data access",
+      "Environment variables for Firebase config",
+      "Password validation (min 8 chars, complexity requirements)",
+      "Rate limiting for auth endpoints",
+      "Data encryption at rest (handled by Firebase)"
+    ]
+  },
+  "outOfScope": [
+    "Payment integration for premium features",
+    "Admin dashboard",
+    "Multi-language support beyond Korean",
+    "Real-time chat or social networking features",
+    "AI-powered fortune predictions (keep existing logic)"
+  ]
+}
