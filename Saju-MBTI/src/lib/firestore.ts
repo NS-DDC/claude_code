@@ -40,6 +40,7 @@ export interface UserPreferences {
   element?: Element;
   birthInfo?: SajuInput;
   notificationSettings?: NotificationSettings;
+  migrationCompleted?: boolean;
   createdAt?: Timestamp;
   updatedAt?: Timestamp;
 }
@@ -323,6 +324,21 @@ export class PreferencesService {
     } catch (error) {
       console.error('Failed to save user preferences:', error);
       throw new Error(`Failed to save preferences for user ${userId}: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+  }
+
+  /**
+   * Delete user preferences
+   * @param userId - User ID
+   * @returns Promise resolving when preferences are deleted
+   */
+  async delete(userId: string): Promise<void> {
+    try {
+      const docRef = this.getDocRef(userId);
+      await deleteDoc(docRef);
+    } catch (error) {
+      console.error('Failed to delete user preferences:', error);
+      throw new Error(`Failed to delete preferences for user ${userId}: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   }
 }

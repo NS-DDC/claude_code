@@ -22,7 +22,27 @@ class ErrorBoundary extends Component<Props, State> {
   }
 
   public componentDidCatch(error: Error, errorInfo: ErrorInfo) {
-    console.error('Uncaught error:', error, errorInfo);
+    // Log to console in development
+    if (process.env.NODE_ENV === 'development') {
+      console.error('Uncaught error:', error, errorInfo);
+    }
+
+    // Report to Sentry in production
+    if (typeof window !== 'undefined' && process.env.NODE_ENV === 'production') {
+      // Dynamically import Sentry to avoid issues if not configured
+      import('@sentry/nextjs').then((Sentry) => {
+        Sentry.captureException(error, {
+          contexts: {
+            react: {
+              componentStack: errorInfo.componentStack,
+            },
+          },
+        });
+      }).catch(() => {
+        // Sentry not configured, fail silently
+        console.error('Error reporting failed');
+      });
+    }
   }
 
   public render() {
@@ -35,8 +55,20 @@ class ErrorBoundary extends Component<Props, State> {
               문제가 발생했습니다
             </h1>
             <p className="text-white/80 mb-6">
-              {this.state.error?.message || '알 수 없는 오류가 발생했습니다.'}
+              일시적인 오류가 발생했습니다. 페이지를 새로고침하거나 잠시 후 다시 시도해주세요.
             </p>
+            {process.env.NODE_ENV === 'development' && this.state.error && (
+              <details className="text-left mb-4 bg-black/30 p-4 rounded-lg">
+                <summary className="cursor-pointer text-white/90 font-semibold mb-2">
+                  개발자 정보 (프로덕션에서는 숨겨짐)
+                </summary>
+                <pre className="text-xs text-white/70 overflow-auto">
+                  {this.state.error.message}
+                  {'\n\n'}
+                  {this.state.error.stack}
+                </pre>
+              </details>
+            )}
             <button
               onClick={() => window.location.reload()}
               className="bg-purple-600 hover:bg-purple-700 text-white font-semibold py-3 px-6 rounded-lg transition-colors"

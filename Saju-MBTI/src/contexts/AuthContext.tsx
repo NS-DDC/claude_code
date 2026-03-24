@@ -25,36 +25,9 @@ import {
   useEffect,
   ReactNode,
 } from 'react';
-import {
-  User,
-  signInWithEmailAndPassword,
-  createUserWithEmailAndPassword,
-  signOut,
-  onAuthStateChanged,
-  GoogleAuthProvider,
-  signInWithPopup,
-  UserCredential,
-} from 'firebase/auth';
+import { User, UserCredential } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
-
-/**
- * Firebase Auth error codes mapped to user-friendly messages
- */
-const AUTH_ERROR_MESSAGES: Record<string, string> = {
-  'auth/email-already-in-use': 'This email is already registered. Please login instead.',
-  'auth/invalid-email': 'Invalid email address format.',
-  'auth/operation-not-allowed': 'Email/password accounts are not enabled. Please contact support.',
-  'auth/weak-password': 'Password is too weak. Use at least 6 characters.',
-  'auth/user-disabled': 'This account has been disabled. Please contact support.',
-  'auth/user-not-found': 'No account found with this email.',
-  'auth/wrong-password': 'Incorrect password. Please try again.',
-  'auth/invalid-credential': 'Invalid email or password.',
-  'auth/too-many-requests': 'Too many failed attempts. Please try again later.',
-  'auth/network-request-failed': 'Network error. Please check your connection.',
-  'auth/popup-closed-by-user': 'Sign-in popup was closed before completing.',
-  'auth/cancelled-popup-request': 'Only one popup request is allowed at a time.',
-  'auth/popup-blocked': 'Sign-in popup was blocked by the browser.',
-};
+import { AuthService } from '@/lib/AuthService';
 
 /**
  * Authentication context value type
@@ -121,20 +94,15 @@ export function AuthProvider({ children }: AuthProviderProps): JSX.Element {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
 
-  useEffect(() => {
-    // If Firebase is not configured, skip auth state monitoring
-    if (!auth) {
-      console.warn('Firebase not configured. Authentication disabled.');
-      setLoading(false);
-      return;
-    }
+  // Initialize AuthService with Firebase auth instance
+  const authService = new AuthService(auth);
 
+  useEffect(() => {
     /**
-     * Subscribe to auth state changes
+     * Subscribe to auth state changes using AuthService
      * Returns unsubscribe function for cleanup
      */
-    const unsubscribe = onAuthStateChanged(
-      auth,
+    const unsubscribe = authService.onAuthStateChanged(
       (currentUser: User | null) => {
         setUser(currentUser);
         setLoading(false);
@@ -159,73 +127,28 @@ export function AuthProvider({ children }: AuthProviderProps): JSX.Element {
    * Login with email and password
    */
   const login = async (email: string, password: string): Promise<UserCredential> => {
-    if (!auth) {
-      throw new Error('Firebase is not configured. Please set up Firebase authentication.');
-    }
-    try {
-      const userCredential = await signInWithEmailAndPassword(auth, email, password);
-      return userCredential;
-    } catch (error: any) {
-      const errorMessage = AUTH_ERROR_MESSAGES[error.code] ||
-        'Failed to sign in. Please try again.';
-      throw new Error(errorMessage);
-    }
+    return authService.login(email, password);
   };
 
   /**
    * Create new account with email and password
    */
   const signup = async (email: string, password: string): Promise<UserCredential> => {
-    if (!auth) {
-      throw new Error('Firebase is not configured. Please set up Firebase authentication.');
-    }
-    try {
-      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-      return userCredential;
-    } catch (error: any) {
-      const errorMessage = AUTH_ERROR_MESSAGES[error.code] ||
-        'Failed to create account. Please try again.';
-      throw new Error(errorMessage);
-    }
+    return authService.signup(email, password);
   };
 
   /**
    * Sign out current user
    */
   const logout = async (): Promise<void> => {
-    if (!auth) {
-      throw new Error('Firebase is not configured. Please set up Firebase authentication.');
-    }
-    try {
-      await signOut(auth);
-    } catch (error: any) {
-      const errorMessage = AUTH_ERROR_MESSAGES[error.code] ||
-        'Failed to sign out. Please try again.';
-      throw new Error(errorMessage);
-    }
+    return authService.logout();
   };
 
   /**
    * Sign in with Google OAuth (popup flow)
    */
   const loginWithGoogle = async (): Promise<UserCredential> => {
-    if (!auth) {
-      throw new Error('Firebase is not configured. Please set up Firebase authentication.');
-    }
-    try {
-      const provider = new GoogleAuthProvider();
-      // Optional: Add custom OAuth parameters
-      provider.setCustomParameters({
-        prompt: 'select_account', // Force account selection
-      });
-
-      const userCredential = await signInWithPopup(auth, provider);
-      return userCredential;
-    } catch (error: any) {
-      const errorMessage = AUTH_ERROR_MESSAGES[error.code] ||
-        'Failed to sign in with Google. Please try again.';
-      throw new Error(errorMessage);
-    }
+    return authService.loginWithGoogle();
   };
 
   const value: AuthContextType = {

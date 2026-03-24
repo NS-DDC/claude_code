@@ -9,29 +9,41 @@ import { HistoryRecord } from '@/types';
 import { historyService, preferencesService, UserPreferences } from './firestore';
 
 const STORAGE_KEY = 'fortune_mbti_history';
-const MIGRATION_FLAG_KEY = 'firestore_migration_completed';
 
 /**
  * Check if user data has been migrated to Firestore
+ * Now checks Firestore instead of localStorage to support multi-device scenarios
  */
-function isMigrationCompleted(): boolean {
-  if (typeof window === 'undefined') return false;
-  return localStorage.getItem(MIGRATION_FLAG_KEY) === 'true';
+async function isMigrationCompleted(userId: string): Promise<boolean> {
+  try {
+    const prefs = await preferencesService.get(userId);
+    return prefs?.migrationCompleted === true;
+  } catch (error) {
+    console.error('Failed to check migration status:', error);
+    return false;
+  }
 }
 
 /**
- * Mark migration as completed
+ * Mark migration as completed in Firestore
  */
-function markMigrationCompleted(): void {
-  if (typeof window === 'undefined') return;
-  localStorage.setItem(MIGRATION_FLAG_KEY, 'true');
+async function markMigrationCompleted(userId: string): Promise<void> {
+  try {
+    const prefs = await preferencesService.get(userId);
+    await preferencesService.save(userId, {
+      ...prefs,
+      migrationCompleted: true,
+    });
+  } catch (error) {
+    console.error('Failed to mark migration completed:', error);
+  }
 }
 
 /**
  * Migrate localStorage data to Firestore for authenticated user
  */
 async function migrateToFirestore(userId: string): Promise<void> {
-  if (isMigrationCompleted()) return;
+  if (await isMigrationCompleted(userId)) return;
 
   try {
     // Migrate history
@@ -59,7 +71,7 @@ async function migrateToFirestore(userId: string): Promise<void> {
       console.log('Migrated user preferences to Firestore');
     }
 
-    markMigrationCompleted();
+    await markMigrationCompleted(userId);
   } catch (error) {
     console.error('Migration failed:', error);
     throw error;
@@ -78,7 +90,7 @@ export const storageService = {
     if (userId) {
       try {
         // Migrate data on first authenticated call
-        if (!isMigrationCompleted()) {
+        if (!(await isMigrationCompleted(userId))) {
           await migrateToFirestore(userId);
         }
         return await historyService.getAll(userId);
@@ -105,7 +117,7 @@ export const storageService = {
   async add(record: HistoryRecord, userId?: string): Promise<void> {
     if (userId) {
       try {
-        if (!isMigrationCompleted()) {
+        if (!(await isMigrationCompleted(userId))) {
           await migrateToFirestore(userId);
         }
         await historyService.add(userId, record);
@@ -212,7 +224,7 @@ export const storageService = {
   async getUserPreferences(userId?: string): Promise<{ mbti?: string; element?: string; birthInfo?: any } | null> {
     if (userId) {
       try {
-        if (!isMigrationCompleted()) {
+        if (!(await isMigrationCompleted(userId))) {
           await migrateToFirestore(userId);
         }
         const prefs = await preferencesService.get(userId);

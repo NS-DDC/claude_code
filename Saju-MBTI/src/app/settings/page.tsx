@@ -199,10 +199,21 @@ export default function SettingsPage() {
 
     setIsDeleting(true);
     try {
-      // Clear user data from Firestore
+      // Delete all user data from Firestore before deleting auth
+      // This ensures GDPR compliance and prevents orphaned data
+
+      // Delete history records
       await historyService.clear(user.uid);
 
-      // Delete Firebase Auth account
+      // Delete user preferences
+      try {
+        await preferencesService.delete(user.uid);
+      } catch (error) {
+        // Preferences might not exist, continue with deletion
+        console.log('No preferences to delete');
+      }
+
+      // Delete Firebase Auth account (must be last)
       await deleteUser(user);
 
       toast.success('계정이 삭제되었습니다', {
